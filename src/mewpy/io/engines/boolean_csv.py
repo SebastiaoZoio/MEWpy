@@ -12,7 +12,7 @@ from .engine import Engine
 from .engines_utils import build_symbolic, expression_warning, csv_warning
 
 if TYPE_CHECKING:
-    from mewpy.germ.models import RegulatoryModel, Model, MetabolicModel
+    from src.mewpy.germ.models import RegulatoryModel, Model, MetabolicModel, MetabolicModelWrapper
 
 
 class BooleanRegulatoryCSV(Engine):
@@ -174,11 +174,11 @@ class BooleanRegulatoryCSV(Engine):
             self.variables[interaction_id].add('interaction')
 
     def read(self,
-             model: Union['Model', 'MetabolicModel', 'RegulatoryModel'] = None,
+             model: Union['Model', 'MetabolicModel', 'RegulatoryModel', 'MetabolicModelWrapper'] = None,
              variables=None):
 
         if not model:
-            model: Union['Model', 'MetabolicModel', 'RegulatoryModel'] = self.model
+            model: Union['Model', 'MetabolicModel', 'RegulatoryModel', 'MetabolicModelWrapper'] = self.model
 
         if not variables:
             variables = self.variables

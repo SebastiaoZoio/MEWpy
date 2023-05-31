@@ -5,9 +5,9 @@ from mewpy.germ.models.serialization import serialize, Serializer
 
 # Preventing circular dependencies that only happen due to type checking
 if TYPE_CHECKING:
-    from mewpy.germ.models import MetabolicModel, RegulatoryModel
-    from mewpy.germ.variables import Gene, Interaction, Metabolite, Reaction, Regulator, Target, Variable
-    from mewpy.germ.lp import LinearProblem
+    from . import MetabolicModel, RegulatoryModel, MetabolicModelWrapper
+    from ...germ.variables import Gene, Interaction, Metabolite, Reaction, Regulator, Target, Variable
+    from ...germ.lp import LinearProblem
 
 
 class MetaModel(type):
@@ -288,7 +288,8 @@ class Model(Serializer, metaclass=MetaModel, factory=True):
     @classmethod
     def factory(cls, *args: str) -> Union[Type['Model'],
                                           Type['MetabolicModel'],
-                                          Type['RegulatoryModel']]:
+                                          Type['RegulatoryModel'],
+                                          Type['MetabolicModelWrapper']]:
         """
         It creates a dynamic Model class from a list of types. The types must be registered in the Model factory.
 
@@ -320,7 +321,9 @@ class Model(Serializer, metaclass=MetaModel, factory=True):
     @classmethod
     def from_types(cls, types: Iterable[str], **kwargs) -> Union['Model',
                                                                  'MetabolicModel',
-                                                                 'RegulatoryModel']:
+                                                                 'RegulatoryModel',
+                                                                 'MetabolicModelWrapper',
+                                                                 ]:
         """
         It creates a model instance from a list of types and a dictionary of containers and attributes.
         The types must be registered in the Model factory.
@@ -832,6 +835,16 @@ class Model(Serializer, metaclass=MetaModel, factory=True):
                 # noinspection PyProtectedMember
                 variable._model_ref -= 1
 
+
+    # -----------------------------------------------------------------------------
+    # metabolic instance methods
+    # -----------------------------------------------------------------------------
+    def set_metabolic_instance(self):
+        self.types.add("metabolic")
+        #self.metabolic_network = metabolic_instance
+
+
+
     # -----------------------------------------------------------------------------
     # Simulators observer pattern
     # -----------------------------------------------------------------------------
@@ -1022,6 +1035,13 @@ class Model(Serializer, metaclass=MetaModel, factory=True):
         """
         It checks whether the model is a regulatory model.
         :return: True if the model is a regulatory model, False otherwise
+        """
+        ...
+
+    def is_metabolic_wrapper(self) -> bool:
+        """
+        It checks whether the model is a metabolic_wrapper model.
+        :return: True if the model is a metabolic_wrapper model, False otherwise
         """
         ...
 

@@ -8,6 +8,7 @@ from .reframed_model import ReframedModel
 from .json import JSON
 from .metabolic_sbml import MetabolicSBML
 from .regulatory_sbml import RegulatorySBML
+from .cobraPy_object import CobraPyObject
 
 
 class Engines(Enum):
@@ -24,6 +25,7 @@ class Engines(Enum):
     CobraModel = CobraModel
     ReframedModel = ReframedModel
     JSON = JSON
+    CobraPyObject = CobraPyObject
 
     @classmethod
     def has_engine(cls, engine):

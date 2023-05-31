@@ -3,10 +3,10 @@ from typing import Union, Dict, TYPE_CHECKING
 
 from mewpy.util.constants import ModelConstants
 
-from mewpy.germ.analysis import FBA
+from src.mewpy.germ.analysis import FBA
 from mewpy.germ.lp import ConstraintContainer, VariableContainer, concat_constraints, integer_coefficients
-from mewpy.germ.solution import ModelSolution
-from mewpy.germ.models import Model, MetabolicModel, RegulatoryModel
+from src.mewpy.germ.solution import ModelSolution
+from src.mewpy.germ.models import Model, MetabolicModel, RegulatoryModel
 from mewpy.solvers import Solution
 from mewpy.solvers.solver import Solver, VarType
 
@@ -897,7 +897,7 @@ class SRFBA(FBA):
 
         :return:
         """
-        if self.model.is_metabolic() and self.model.is_regulatory():
+        if (self.model.is_metabolic() or self.model.is_metabolic_wrapper()) and self.model.is_regulatory():
             self._build_mass_constraints()
             self._build_gprs()
             self._build_interactions()

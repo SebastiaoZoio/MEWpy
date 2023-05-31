@@ -7,11 +7,11 @@ from cobra import Model as Cobra_Model
 from reframed import CBModel as Reframed_Model
 
 from mewpy.germ.algebra import Symbolic, NoneAtom
-from mewpy.germ.variables import Variable
+from src.mewpy.germ.variables import Variable
 
 if TYPE_CHECKING:
-    from mewpy.germ.variables import Gene, Interaction, Metabolite, Reaction, Regulator, Target
-    from mewpy.germ.models import Model, MetabolicModel, RegulatoryModel
+    from src.mewpy.germ.variables import Gene, Interaction, Metabolite, Reaction, Regulator, Target
+    from src.mewpy.germ.models import Model, MetabolicModel, RegulatoryModel, MetabolicModelWrapper
 
 
 @dataclass
@@ -86,7 +86,7 @@ class VariableRecord:
     function_terms: Dict[str, 'FunctionTerm'] = field(default_factory=dict)
 
     def to_variable(self,
-                    model: Union['Model', 'MetabolicModel', 'RegulatoryModel'],
+                    model: Union['Model', 'MetabolicModel', 'RegulatoryModel', 'MetabolicModelWrapper'],
                     types: Set[str],
                     **attributes) -> Tuple[Union['Gene', 'Interaction', 'Metabolite', 'Reaction', 'Regulator',
                                                  'Target', Variable], str]:

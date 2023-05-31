@@ -9,7 +9,7 @@ from .fba import FBA
 from .pfba import pFBA
 
 if TYPE_CHECKING:
-    from mewpy.germ.models import Model, MetabolicModel, RegulatoryModel
+    from mewpy.germ.models import Model, MetabolicModel, RegulatoryModel, MetabolicModelWrapper
 
 
 def slim_fba(model: Union['Model', 'MetabolicModel', 'RegulatoryModel'],
@@ -67,7 +67,7 @@ def slim_pfba(model: Union['Model', 'MetabolicModel', 'RegulatoryModel'],
     return objective_value
 
 
-def fva(model: Union['Model', 'MetabolicModel', 'RegulatoryModel'],
+def fva(model: Union['Model', 'MetabolicModel', 'RegulatoryModel', 'MetabolicModelWrapper'],
         fraction: float = 1.0,
         reactions: Sequence[str] = None,
         objective: Union[str, Dict[str, float]] = None,
@@ -86,6 +86,13 @@ def fva(model: Union['Model', 'MetabolicModel', 'RegulatoryModel'],
     :param constraints: additional constraints to be used for the simulation (default: None)
     :return: a pandas DataFrame with the minimum and maximum fluxes for each reaction
     """
+    if model.is_metabolic_wrapper():
+        return model.wrapper_fva(fraction=fraction,
+                                 reactions=reactions,
+                                 objective=objective,
+                                 constraints=constraints
+                                 )
+
     if not reactions:
         reactions = model.reactions.keys()
 

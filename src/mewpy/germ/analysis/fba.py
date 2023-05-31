@@ -1,7 +1,9 @@
 from typing import Union, Dict
 
+from functools import singledispatchmethod
+
 from mewpy.germ.lp import ConstraintContainer, VariableContainer, LinearProblem
-from mewpy.germ.models import Model, MetabolicModel, RegulatoryModel
+from src.mewpy.germ.models import Model, MetabolicModel, RegulatoryModel, MetabolicModelWrapper
 from mewpy.solvers.solution import Solution
 from mewpy.solvers.solver import VarType, Solver
 
@@ -9,7 +11,7 @@ from mewpy.solvers.solver import VarType, Solver
 class FBA(LinearProblem):
 
     def __init__(self,
-                 model: Union[Model, MetabolicModel, RegulatoryModel],
+                 model: Union[Model, MetabolicModel, RegulatoryModel, MetabolicModelWrapper],
                  solver: Union[str, Solver, None] = None,
                  build: bool = False,
                  attach: bool = False):
@@ -65,6 +67,12 @@ class FBA(LinearProblem):
         variables and constraints. The linear problem is then loaded into the solver.
         :return:
         """
+        if self.model.is_metabolic_wrapper():
+            self._minimize = False
+            #self._linear_objective = {var.id: value for var, value in self.model.objective.items()}
+
+            
+
         if self.model.is_metabolic():
             # mass balance constraints and reactions' variables
             self._build_mass_constraints()
@@ -80,4 +88,27 @@ class FBA(LinearProblem):
         :param solver_kwargs: A dictionary of keyword arguments to be passed to the solver.
         :return: A Solution instance.
         """
+        if self.model.is_metabolic_wrapper():
+           return self.model.wrapper_simulation(method='fba')
+
         return self.solver.solve(**solver_kwargs)
+
+
+
+
+
+    @singledispatchmethod
+    def some_func(self, arg):
+        print(arg)
+        print("just_metabolic")
+
+
+    @some_func.register
+    def _(self, arg:int):
+        print(arg)
+        print("metabolic_wrapper")
+
+    @some_func.register
+    def _(self, arg:list):
+        print(arg)
+        print("metabolic_wrapper list")

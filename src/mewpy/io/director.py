@@ -1,11 +1,11 @@
 from collections import defaultdict
 from typing import Union, TYPE_CHECKING, Tuple
 
-from mewpy.germ.models import Model
+from ..germ.models import Model
 from .engines import JSON, MetabolicSBML
 
 if TYPE_CHECKING:
-    from mewpy.germ.models import Model, MetabolicModel, RegulatoryModel
+    from ..germ.models import Model, MetabolicModel, RegulatoryModel, MetabolicModelWrapper
     from .builder import Builder
     from .reader import Reader
     from .writer import Writer
@@ -32,7 +32,7 @@ class Director:
         """
         return self._builders
 
-    def read(self) -> Union['Model', 'RegulatoryModel', 'MetabolicModel']:
+    def read(self) -> Union['Model', 'RegulatoryModel', 'MetabolicModel', 'MetabolicModelWrapper']:
         """
         Reading a GERM model, namely metabolic, regulatory or both encoded into one or more file types.
         Reading is performed step-wise according to the builders order.
