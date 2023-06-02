@@ -1,10 +1,10 @@
 from typing import Union, Dict, Tuple, List
 from warnings import warn
 
-from src.mewpy.germ.analysis import FBA
+from mewpy.germ.analysis import FBA
 from mewpy.solvers import Solution
 from mewpy.solvers.solver import Solver
-from src.mewpy.germ.models import Model, MetabolicModel, RegulatoryModel
+from mewpy.germ.models import Model, MetabolicModel, RegulatoryModel
 from mewpy.util.constants import ModelConstants
 from mewpy.germ.solution import ModelSolution, DynamicSolution
 

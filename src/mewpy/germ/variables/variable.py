@@ -5,7 +5,7 @@ from mewpy.germ.models.serialization import serialize, Serializer
 
 # Preventing circular dependencies that only happen due to type checking
 if TYPE_CHECKING:
-    from src.mewpy.germ.models import Model, MetabolicModel, RegulatoryModel, MetabolicModelWrapper
+    from mewpy.germ.models import Model, MetabolicModel, RegulatoryModel, MetabolicModelWrapper
     from mewpy.germ.algebra import Expression, Symbolic
 
     from .gene import Gene

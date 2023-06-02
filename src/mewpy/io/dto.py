@@ -7,11 +7,11 @@ from cobra import Model as Cobra_Model
 from reframed import CBModel as Reframed_Model
 
 from mewpy.germ.algebra import Symbolic, NoneAtom
-from src.mewpy.germ.variables import Variable
+from mewpy.germ.variables import Variable
 
 if TYPE_CHECKING:
-    from src.mewpy.germ.variables import Gene, Interaction, Metabolite, Reaction, Regulator, Target
-    from src.mewpy.germ.models import Model, MetabolicModel, RegulatoryModel, MetabolicModelWrapper
+    from mewpy.germ.variables import Gene, Interaction, Metabolite, Reaction, Regulator, Target
+    from mewpy.germ.models import Model, MetabolicModel, RegulatoryModel, MetabolicModelWrapper
 
 
 @dataclass

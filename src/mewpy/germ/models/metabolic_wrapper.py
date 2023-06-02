@@ -139,9 +139,6 @@ class MetabolicModelWrapper(Model, model_type='metabolic_wrapper', register=True
         pass
 
 
-    def get(self, identifier: Any, default=None) -> Union['Gene', 'Metabolite', 'Reaction']:
-        return super(MetabolicModelWrapper, self).get(identifier=identifier, default=default)
-
     def wrapper_fva(self,
                     fraction,
                     reactions,

@@ -12,7 +12,7 @@ from .engine import Engine
 from .engines_utils import build_symbolic, expression_warning, csv_warning
 
 if TYPE_CHECKING:
-    from src.mewpy.germ.models import RegulatoryModel, Model, MetabolicModel, MetabolicModelWrapper
+    from mewpy.germ.models import RegulatoryModel, Model, MetabolicModel, MetabolicModelWrapper
 
 
 class BooleanRegulatoryCSV(Engine):

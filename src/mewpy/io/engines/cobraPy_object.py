@@ -3,7 +3,7 @@ from typing import Union, TYPE_CHECKING
 
 from .engine import Engine
 
-from src.mewpy.io.dto import VariableRecord, DataTransferObject, CompartmentRecord, FunctionTerm
+from mewpy.io.dto import VariableRecord, DataTransferObject, CompartmentRecord, FunctionTerm
 from .engines_utils import build_symbolic, expression_warning, cobra_warning
 
 

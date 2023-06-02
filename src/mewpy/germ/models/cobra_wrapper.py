@@ -1,33 +1,16 @@
 from typing import Any, Sequence, TYPE_CHECKING, Generator, Union, List
-from .metabolic_wrapper import MetabolicModelWrapper
 
-from mewpy.germ.models.serialization import serialize
+from .metabolic_wrapper import MetabolicModelWrapper
 from mewpy.util.utilities import generator
 from mewpy.util.history import HistoryManager
-
-from ...solvers.solution import Solution
-
-from cobra.core.solution import Solution as Cobra_Solution
-from cobra.flux_analysis import pfba, flux_variability_analysis
-from enum import Enum
-
-from src.mewpy.germ.variables import Metabolite, Gene, Reaction
-from cobra.core.reaction import Reaction as CobraRxn
-from cobra.core.metabolite import Metabolite as CobraMet
-from cobra.core.gene import Gene as CobraGene
-from cobra.core import GPR as CobraGPR
-from cobra.manipulation.delete import prune_unused_reactions, prune_unused_metabolites, remove_genes
-
-from mewpy.germ.variables.variable import Variable
-from mewpy.simulation.cobra import Simulation
-
-from src.mewpy.io.engines.engines_utils import build_symbolic
 from mewpy.germ.algebra import Expression
-from mewpy.util.utilities import AttrDict
-
+from mewpy.germ.variables.variable import Variable
+from mewpy.germ.models.serialization import serialize
+from mewpy.simulation.cobra import Simulation
+from mewpy.io.engines.engines_utils import build_symbolic
+from mewpy.solvers.solution import Solution
 
 if TYPE_CHECKING:
-    from mewpy.germ.algebra import Expression
     from mewpy.germ.variables import Gene, Metabolite, Reaction
 
 
@@ -126,19 +109,19 @@ class CobraModelWrapper(MetabolicModelWrapper, model_type='metabolic_wrapper', r
     @property
     def metabolites(self):
         if not self._metabolites:
-            self._metabolites = {cobra_met.id: self.cobra_met_to_mewpy_met(cobra_met) for cobra_met in self.met_model.metabolites}
+            self._metabolites = {cobra_met: self.cobra_met_to_mewpy_met(cobra_met) for cobra_met in self.simulator.metabolites}
         return self._metabolites
     
     @property
     def genes(self):
         if not self._genes:
-            self._genes = {cobra_gene.id: self.cobra_gene_to_mewpy_gene(cobra_gene) for cobra_gene in self.met_model.genes}
+            self._genes = {cobra_gene: self.cobra_gene_to_mewpy_gene(cobra_gene) for cobra_gene in self.simulator.genes}
         return self._genes
 
     @property
     def reactions(self):
         if not self._reactions:
-            self._reactions = {cobra_rxn.id: self.cobra_rxn_to_mewpy_rxn(cobra_rxn) for cobra_rxn in self.met_model.reactions}
+            self._reactions = {cobra_rxn: self.cobra_rxn_to_mewpy_rxn(cobra_rxn) for cobra_rxn in self.simulator.reactions}
         return self._reactions
 
     
@@ -184,97 +167,97 @@ class CobraModelWrapper(MetabolicModelWrapper, model_type='metabolic_wrapper', r
     def add_reg_data(self, args, id):
         if self.is_regulatory():
             if id in self.regulators:
-                reg = self.regulators[id]
-                add_regulator_data(args, reg)
+                args['types'].add('regulator')
+                args['interactions'] = self.regulators[id].interactions
     
 
             if id in self.targets:
-                tar = self.targets[id]
-                add_target_data(args, tar)
+                args['types'].add('target')
+                args['interaction'] = self.targets[id].interaction
 
 
+    def add_reaction_data(self, args:dict, rxn_id):
+        rxn_dict = self.simulator.get_reaction(rxn_id)
 
-    def add_reaction_data(self, args:dict, cobra_rxn: CobraRxn):
-
-        symbolic, warning = build_symbolic(expression=cobra_rxn.gene_reaction_rule)
-        genes = {gene.id: self.cobra_gene_to_mewpy_gene(gene) for gene in cobra_rxn.genes}
+        symbolic, warning = build_symbolic(expression=rxn_dict['gpr'])
+        genes = {gene.name: self.cobra_gene_to_mewpy_gene(gene.name) for gene in symbolic.atoms(symbols_only=True)}
         gpr = Expression(symbolic=symbolic, variables=genes)
 
-        stoichiometry = {self.cobra_met_to_mewpy_met(met): cobra_rxn.metabolites[met] for met in cobra_rxn.metabolites}
-        
+        stoichiometry = {self.cobra_met_to_mewpy_met(met_id): coeff for met_id, coeff in rxn_dict['stoichiometry'].items()}
+
         args['types']=set(['reaction'])
-        args['identifier']=cobra_rxn.id
-        args['name']=cobra_rxn.name
-        args['aliases']={cobra_rxn.id, cobra_rxn.name}
+        args['identifier']=rxn_id
+        args['name']=rxn_dict['name']
+        args['aliases']={rxn_id, rxn_dict['name']}
         args['model']=self
-        args['bounds']=cobra_rxn.bounds
+        args['bounds']=(rxn_dict['lb'], rxn_dict['ub'])
         args['stoichiometry']=stoichiometry
         args['gpr']=gpr
 
+            
+    def add_metabolite_data(self, args:dict, met_id):
+        met_dict = self.simulator.get_metabolite(met_id)
 
-    
-    def add_metabolite_data(self, args:dict, cobra_met: CobraMet):
-
-        reactions = {rxn.id: mewpy_rxn_instance(rxn, self) for rxn in cobra_met.reactions}
+        reactions = {rxn: self.mewpy_rxn_instance(rxn) for rxn in self.simulator.get_metabolite_reactions(met_id)}
 
         args['types'] = set(['metabolite'])
-        args['identifier'] = cobra_met.id
-        args['name'] = cobra_met.name
-        args['aliases'] = {cobra_met.id, cobra_met.name}
+        args['identifier'] = met_id
+        args['name'] = met_dict['name']
+        args['aliases'] = {met_id, met_dict['name']}
         args['model'] = self
-        args['formula'] = cobra_met.formula
-        args['charge'] = cobra_met.charge
-        args['compartment'] = cobra_met.compartment
+        args['formula'] = met_dict['formula']
+        args['compartment'] = met_dict['compartment']
+        #args['charge'] = met_dict['charge']
         args['reactions'] = reactions
-        
-        
 
-    def add_gene_data(self, args, cobra_gene: CobraGene):
 
-        reactions = {rxn.id: mewpy_rxn_instance(rxn, self) for rxn in cobra_gene.reactions}
+    def add_gene_data(self, args, gene_id):
+        gene_dict = self.simulator.get_gene(gene_id)
+
+        reactions = {rxn: self.mewpy_rxn_instance(rxn) for rxn in gene_dict['reactions']}
 
         args['types'] = set(['gene'])
-        args['identifier'] = cobra_gene.id
-        args['name'] = cobra_gene.name
-        args['aliases'] = {cobra_gene.id, cobra_gene.name}
+        args['identifier'] = gene_id
+        args['name'] = gene_dict['name']
+        args['aliases'] = {gene_id, gene_dict['name']}
         args['model'] = self
         args['reactions'] = reactions
 
 
-    def cobra_met_to_mewpy_met(self, cobra_met: CobraMet):
+    def cobra_met_to_mewpy_met(self, met_id):
         args = {}
-        self.add_metabolite_data(args, cobra_met)
-        self.add_reg_data(args, cobra_met.id)
+        self.add_metabolite_data(args, met_id)
+        self.add_reg_data(args, met_id)
 
         return Variable.from_types(**args)
 
-    def cobra_rxn_to_mewpy_rxn(self, cobra_rxn: AttrDict):
-        args = {}
-        self.add_reaction_data(args, cobra_rxn)
-        self.add_reg_data(args, cobra_rxn.id)
 
-        return Variable.from_types(**args)
-    
-    def cobra_gene_to_mewpy_gene(self, cobra_gene: CobraGene):
+    def cobra_rxn_to_mewpy_rxn(self, rxn_id):
         args = {}
-        self.add_gene_data(args, cobra_gene)
-        self.add_reg_data(args, cobra_gene.id)
+        self.add_reaction_data(args, rxn_id)
+        self.add_reg_data(args, rxn_id)
 
         return Variable.from_types(**args)
     
+    def cobra_gene_to_mewpy_gene(self, gene_id):
+        args = {}
+        self.add_gene_data(args, gene_id)
+        self.add_reg_data(args, gene_id)
+
+        return Variable.from_types(**args)
+    
+
+    def mewpy_rxn_instance(self, rxn_id):
+        args = {'types': {'reaction'}, 'identifier': rxn_id, 'model': self}
+        return Variable.from_types(**args)
+
     def cobra_objective_to_objective(self):
         res = {}
-        for arg in self.met_model.objective.expression.args:
-            coef, reaction_id = str(arg).split('*')
-            try:
-                cobra_rxn = self.met_model.reactions.get_by_id(reaction_id)
-                reaction = self.cobra_rxn_to_mewpy_rxn(cobra_rxn)
-                res[reaction] = float(coef)
-            except:
-                continue
-
+        for rxn_id, coeff in self.simulator.objective.items():
+            rxn = self.cobra_rxn_to_mewpy_rxn(rxn_id)
+            res[rxn] = float(coeff)
         return res
-
+    
 
 
     def get(self, identifier: Any, default=None) -> Union['Gene', 'Metabolite', 'Reaction']:
@@ -295,14 +278,14 @@ class CobraModelWrapper(MetabolicModelWrapper, model_type='metabolic_wrapper', r
         
         else:
         
-            if identifier in self.met_model.reactions:
-                return self.cobra_rxn_to_mewpy_rxn(self.met_model.reactions.get_by_id(identifier))
+            if identifier in self.simulator.reactions:
+                return self.cobra_rxn_to_mewpy_rxn(identifier)
                     
-            elif identifier in self.met_model.genes:
-                return self.cobra_gene_to_mewpy_gene(self.met_model.genes.get_by_id(identifier))
+            elif identifier in self.simulator.genes:
+                return self.cobra_gene_to_mewpy_gene(identifier)
 
-            elif identifier in self.met_model.metabolites:
-                return self.cobra_met_to_mewpy_met(self.met_model.metabolites.get_by_id(identifier))
+            elif identifier in self.simulator.metabolites:
+                return self.cobra_met_to_mewpy_met(identifier)
 
             else:
                 return super(MetabolicModelWrapper, self).get(identifier=identifier, default=default) 
@@ -374,128 +357,40 @@ class CobraModelWrapper(MetabolicModelWrapper, model_type='metabolic_wrapper', r
         for variable in variables:
 
             if 'gene' in variable.types:
-                remove_genes(self.met_model, [variable])
+                pass
 
             if 'metabolite' in variable.types:
-                self.met_model.remove_metabolites([variable])
+                pass
 
             if 'reaction' in variable.types:
-                self.met_model.remove_reactions([variable])
-            
-            if remove_orphans:
-                prune_unused_metabolites(self.met_model)
-                prune_unused_reactions(self.met_model)
-
+                self.simulator.remove_reaction(variable)
         
         return super(MetabolicModelWrapper, self).remove(*variables, remove_orphans=remove_orphans, history=history)
 
 
-
     def wrapper_simulation(self,  method='fba') -> Solution:
         if method == 'fba':
-            cobra_solution = self.met_model.optimize()
-            solution = cobra_solution_to_solution(cobra_solution)
-
-            return solution
+            res = self.simulator.simulate()
 
         elif method == 'pfba':
-            cobra_solution = pfba(self.met_model)
-            solution = cobra_solution_to_solution(cobra_solution)
+            res = self.simulator.simulate(method='pFBA')
 
-            return solution
+        values = dict(res.fluxes)
+        status = res.status
+        fobj=res.objective_value
+        message = status.value
+
+        return Solution(fobj=fobj,values=values,status=status, message=message)
 
 
     def wrapper_fva(self,
-                    fraction=1.0,
+                    fraction=0.9,
                     reactions: Sequence[str] = None,
                     objective=None,
                     constraints=None):
         if objective != None:
             raise ValueError("Cobrapy does not support changing the objective in FVA simulations")
-        if constraints != None:
-            raise ValueError("Cobrapy does not support adding constraints in FVA simulations")
+
+        res = self.simulator.FVA(reactions=reactions, obj_frac=fraction, constraints=constraints, format='df')
+        return res.rename(columns ={'Minimum': 'minimum', "Maximum":'maximum'})
         
-        return flux_variability_analysis(model=self.met_model, fraction_of_optimum=fraction, reaction_list=reactions)
-
-
-
-
-
-
-
-
-
-## aux functions
-
-
-class Status(Enum):
-    """ Enumeration of possible solution status. """
-    OPTIMAL = 'Optimal'
-    UNKNOWN = 'Unknown'
-    SUBOPTIMAL = 'Suboptimal'
-    UNBOUNDED = 'Unbounded'
-    INFEASIBLE = 'Infeasible'
-    INF_OR_UNB = 'Infeasible or Unbounded'
-
-def get_status(status: str) -> Status:
-    if status == 'optimal':
-        return Status.OPTIMAL
-    elif status == 'suboptimal':
-        return Status.SUBOPTIMAL
-    elif status == 'unbounded':
-        return Status.UNBOUNDED
-    elif status == 'infeasible':
-        return Status.INFEASIBLE
-    elif status == 'infeasible_or_unbounded':
-        return Status.INF_OR_UNB
-    else:
-        return Status.UNKNOWN
-    
-
-def cobra_solution_to_solution(wrapper_solution: Cobra_Solution):
-    fobj = wrapper_solution.objective_value
-    message = wrapper_solution.status
-    values = wrapper_solution.fluxes.to_dict()
-    status = get_status(wrapper_solution.status)
-
-    return Solution(status=status, message=message, fobj=fobj, values=values)
-
-
-def mewpy_rxn_instance(cobra_rxn:CobraRxn, model):
-    rxn = Reaction(identifier= cobra_rxn.id)
-    rxn.update(name= cobra_rxn.name, aliases={cobra_rxn.id, cobra_rxn.name}, model=model)
-
-    return rxn
-  
-
-def add_regulator_data(args:dict, regulator):
-    args['types'].add('regulator')
-    args['interactions'] = regulator.interactions
-
-
-def add_target_data(args:dict, target):
-    args['types'].add('target')
-    args['interaction'] = target.interaction
-
-
-
-def mewpy_gene_to_cobra_gene(gene : Gene) -> CobraGene:
-    return CobraGene(gene.id, name=gene.name, functional=gene.is_active)
-
-
-def mewpy_met_to_cobra_met(met : Metabolite) -> CobraMet:    
-    return CobraMet(met.id,formula=met.formula,name=met.name,compartment=met.compartment, charge=met.charge)
-
-
-def mewpy_rxn_to_cobra_rxn(rxn : Reaction) -> CobraRxn:
-    cobra_rxn = CobraRxn(rxn.id, name=rxn.name, lower_bound=rxn.lower_bound, upper_bound=rxn.upper_bound)
-
-    cobra_rxn.gpr = CobraGPR.from_string(rxn.gpr.to_string())    
-
-    mets = {}
-    for met in rxn.metabolites.values():
-        #get coefficient
-        mets[mewpy_met_to_cobra_met(met)] = rxn.stoichiometry[met]
-    cobra_rxn.add_metabolites(mets)
-        
-    return cobra_rxn

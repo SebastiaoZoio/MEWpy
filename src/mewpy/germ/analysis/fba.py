@@ -1,9 +1,8 @@
 from typing import Union, Dict
 
-from functools import singledispatchmethod
 
 from mewpy.germ.lp import ConstraintContainer, VariableContainer, LinearProblem
-from src.mewpy.germ.models import Model, MetabolicModel, RegulatoryModel, MetabolicModelWrapper
+from mewpy.germ.models import Model, MetabolicModel, RegulatoryModel, MetabolicModelWrapper
 from mewpy.solvers.solution import Solution
 from mewpy.solvers.solver import VarType, Solver
 
@@ -92,23 +91,3 @@ class FBA(LinearProblem):
            return self.model.wrapper_simulation(method='fba')
 
         return self.solver.solve(**solver_kwargs)
-
-
-
-
-
-    @singledispatchmethod
-    def some_func(self, arg):
-        print(arg)
-        print("just_metabolic")
-
-
-    @some_func.register
-    def _(self, arg:int):
-        print(arg)
-        print("metabolic_wrapper")
-
-    @some_func.register
-    def _(self, arg:list):
-        print(arg)
-        print("metabolic_wrapper list")

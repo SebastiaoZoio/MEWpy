@@ -3,10 +3,10 @@ from typing import Union, Dict, TYPE_CHECKING
 
 from mewpy.util.constants import ModelConstants
 
-from src.mewpy.germ.analysis import FBA
+from mewpy.germ.analysis import FBA
 from mewpy.germ.lp import ConstraintContainer, VariableContainer, concat_constraints, integer_coefficients
-from src.mewpy.germ.solution import ModelSolution
-from src.mewpy.germ.models import Model, MetabolicModel, RegulatoryModel
+from mewpy.germ.solution import ModelSolution
+from mewpy.germ.models import Model, MetabolicModel, RegulatoryModel
 from mewpy.solvers import Solution
 from mewpy.solvers.solver import Solver, VarType
 

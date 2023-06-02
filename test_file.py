@@ -2,8 +2,8 @@ import warnings
 warnings.filterwarnings("ignore", message="scipy._lib.messagestream.MessageStream size changed")
 from termcolor import colored
 
-from src.mewpy.io import Reader, Engines, read_model
-from src.mewpy.germ.analysis import FBA, fva, SRFBA, RFBA
+from mewpy.io import Reader, Engines, read_model
+from mewpy.germ.analysis import FBA, fva, SRFBA, RFBA
 from cobra.io import read_sbml_model
 
 FAILED = 0
