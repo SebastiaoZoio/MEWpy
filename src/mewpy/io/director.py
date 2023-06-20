@@ -2,10 +2,10 @@ from collections import defaultdict
 from typing import Union, TYPE_CHECKING, Tuple
 
 from ..germ.models import Model
-from .engines import JSON, MetabolicSBML
+from .engines import JSON
 
 if TYPE_CHECKING:
-    from ..germ.models import Model, MetabolicModel, RegulatoryModel, MetabolicModelWrapper
+    from ..germ.models import Model, MetabolicModel, RegulatoryModel
     from .builder import Builder
     from .reader import Reader
     from .writer import Writer
@@ -32,7 +32,7 @@ class Director:
         """
         return self._builders
 
-    def read(self) -> Union['Model', 'RegulatoryModel', 'MetabolicModel', 'MetabolicModelWrapper']:
+    def read(self) -> Union['Model', 'RegulatoryModel', 'MetabolicModel']:
         """
         Reading a GERM model, namely metabolic, regulatory or both encoded into one or more file types.
         Reading is performed step-wise according to the builders order.
@@ -100,11 +100,6 @@ class Director:
             # the read method will create a TargetRegulatorMetabolite variable under a single instance
             # (a multi-type variable). This variable contains all attributes of a Target, Regulator and Metabolite
             engine.read(model=model, variables=variables)
-
-            # update model id and name
-            if isinstance(engine, MetabolicSBML):
-                model_id = engine.dto.id
-                model_name = engine.dto.name
 
             # Seventh, cleaning the data transfer object In detail, when the open and parse methods of an engine are
             # used, the data transfer object is populated with records. Then, it is no longer required for this

@@ -2,7 +2,7 @@ from typing import Union, Dict
 
 from ..analysis import FBA
 from ..lp import ConstraintContainer, VariableContainer, LinearProblem
-from ..models import Model, MetabolicModel, RegulatoryModel, MetabolicModelWrapper
+from ..models import Model, MetabolicModel, RegulatoryModel
 from mewpy.solvers.solution import Solution, Status
 from mewpy.solvers.solver import VarType, Solver
 
@@ -10,7 +10,7 @@ from mewpy.solvers.solver import VarType, Solver
 class pFBA(FBA):
 
     def __init__(self,
-                 model: Union[Model, MetabolicModel, RegulatoryModel, MetabolicModelWrapper],
+                 model: Union[Model, MetabolicModel, RegulatoryModel],
                  solver: Union[str, Solver, None] = None,
                  build: bool = False,
                  attach: bool = False):
@@ -113,10 +113,11 @@ class pFBA(FBA):
         variables and constraints. The linear problem is then loaded into the solver.
         :return:
         """
-        if self.model.is_metabolic_wrapper():
-            return
 
         if self.model.is_metabolic():
+            if self.model.has_external_method('pFBA'):
+                return
+
             # mass balance constraints and reactions' variables
             self._build_mass_constraints()
 
@@ -132,8 +133,9 @@ class pFBA(FBA):
         :return: A Solution instance.
         """
 
-        if self.model.is_metabolic_wrapper():
-           return self.model.wrapper_simulation(method='pfba')
+        if self.model.has_external_method('pFBA'):
+           constraints = solver_kwargs.get('constraints')
+           return self.model.wrapper_simulation(method='pfba', constraints=constraints)
 
         if not solver_kwargs:
             solver_kwargs = {}

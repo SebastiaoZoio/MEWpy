@@ -9,7 +9,7 @@ from .fba import FBA
 from .pfba import pFBA
 
 if TYPE_CHECKING:
-    from mewpy.germ.models import Model, MetabolicModel, RegulatoryModel, MetabolicModelWrapper
+    from mewpy.germ.models import Model, MetabolicModel, RegulatoryModel
 
 
 def slim_fba(model: Union['Model', 'MetabolicModel', 'RegulatoryModel'],
@@ -67,7 +67,7 @@ def slim_pfba(model: Union['Model', 'MetabolicModel', 'RegulatoryModel'],
     return objective_value
 
 
-def fva(model: Union['Model', 'MetabolicModel', 'RegulatoryModel', 'MetabolicModelWrapper'],
+def fva(model: Union['Model', 'MetabolicModel', 'RegulatoryModel'],
         fraction: float = 1.0,
         reactions: Sequence[str] = None,
         objective: Union[str, Dict[str, float]] = None,
@@ -86,7 +86,7 @@ def fva(model: Union['Model', 'MetabolicModel', 'RegulatoryModel', 'MetabolicMod
     :param constraints: additional constraints to be used for the simulation (default: None)
     :return: a pandas DataFrame with the minimum and maximum fluxes for each reaction
     """
-    if model.is_metabolic_wrapper():
+    if model.has_external_method('FVA'):
         return model.wrapper_fva(fraction=fraction,
                                  reactions=reactions,
                                  objective=objective,
@@ -140,6 +140,9 @@ def single_gene_deletion(model: Union['Model', 'MetabolicModel', 'RegulatoryMode
     :param constraints: additional constraints to be used for the simulation (default: None)
     :return: a pandas DataFrame with the fluxes for each gene
     """
+    if model.has_external_method('sgd'):
+        return model.single_gene_deletion(genes=genes)
+
     if not constraints:
         constraints = {}
 
@@ -199,6 +202,9 @@ def single_reaction_deletion(model: Union['Model', 'MetabolicModel', 'Regulatory
     :param constraints: additional constraints to be used for the simulation (default: None)
     :return: a pandas DataFrame with the fluxes for each reaction
     """
+    if model.has_external_method('srd'):
+        return model.single_reaction_deletion(reactions=reactions)
+
     if not reactions:
         reactions = model.reactions.keys()
 

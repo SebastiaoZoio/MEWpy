@@ -11,7 +11,7 @@ from mewpy.germ.variables import Variable
 
 if TYPE_CHECKING:
     from mewpy.germ.variables import Gene, Interaction, Metabolite, Reaction, Regulator, Target
-    from mewpy.germ.models import Model, MetabolicModel, RegulatoryModel, MetabolicModelWrapper
+    from mewpy.germ.models import Model, MetabolicModel, RegulatoryModel
 
 
 @dataclass
@@ -86,7 +86,7 @@ class VariableRecord:
     function_terms: Dict[str, 'FunctionTerm'] = field(default_factory=dict)
 
     def to_variable(self,
-                    model: Union['Model', 'MetabolicModel', 'RegulatoryModel', 'MetabolicModelWrapper'],
+                    model: Union['Model', 'MetabolicModel', 'RegulatoryModel'],
                     types: Set[str],
                     **attributes) -> Tuple[Union['Gene', 'Interaction', 'Metabolite', 'Reaction', 'Regulator',
                                                  'Target', Variable], str]:

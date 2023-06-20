@@ -27,7 +27,7 @@ import numpy as np
 
 from cobra.core.model import Model
 from cobra.core.solution import Solution
-from cobra.flux_analysis import pfba, moma, room
+from cobra.flux_analysis import pfba, moma, room, single_gene_deletion, single_reaction_deletion
 
 from . import get_default_solver, SimulationMethod, SStatus
 from .simulation import Simulator, SimulationResult, ModelContainer
@@ -729,6 +729,11 @@ class Simulation(CobraModelContainer, Simulator):
     def create_empty_model(self, model_id: str):
         return Simulation(Model(model_id))
 
+    def gene_deletion(self, genes: Union[List[str],None] = None):
+        return single_gene_deletion(model=self.model, gene_list=genes)
+    
+    def reaction_deletion(self, reactions: Union[List[str],None] = None):
+        return single_reaction_deletion(model=self.model, reaction_list=reactions)
 
 class GeckoSimulation(Simulation):
     """

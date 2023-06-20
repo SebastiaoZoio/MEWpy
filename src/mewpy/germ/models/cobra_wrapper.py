@@ -1,8 +1,8 @@
-from typing import Any, Sequence, TYPE_CHECKING, Generator, Union, List
+from typing import Any, Sequence, TYPE_CHECKING, Generator, Union, List, Dict, Tuple, Set
 
-from .metabolic_wrapper import MetabolicModelWrapper
+from .metabolic import MetabolicModel
 from mewpy.util.utilities import generator
-from mewpy.util.history import HistoryManager
+from mewpy.util.history import HistoryManager, recorder
 from mewpy.germ.algebra import Expression
 from mewpy.germ.variables.variable import Variable
 from mewpy.germ.models.serialization import serialize
@@ -10,11 +10,13 @@ from mewpy.simulation.cobra import Simulation
 from mewpy.io.engines.engines_utils import build_symbolic
 from mewpy.solvers.solution import Solution
 
+from cobra.core.model import Model as CobraModel
+
 if TYPE_CHECKING:
     from mewpy.germ.variables import Gene, Metabolite, Reaction
 
 
-class CobraModelWrapper(MetabolicModelWrapper, model_type='metabolic_wrapper', register=True, constructor=True, checker=True):
+class CobraModelWrapper(MetabolicModel, model_type='metabolic', register=True, constructor=True, checker=True):
     """
     A germ metabolic wrapper model consists of a reference to a classic Genome-Scale Metabolic (GEM) model,
     represented as a COBRApy or Reframed object.
@@ -36,6 +38,10 @@ class CobraModelWrapper(MetabolicModelWrapper, model_type='metabolic_wrapper', r
     """
     def __init__(self,
                  identifier: Any,
+                 genes: Dict[str, 'Gene'] = None,
+                 metabolites: Dict[str, 'Metabolite'] = None,
+                 objective: Dict['Reaction', Union[float, int]] = None,
+                 reactions: Dict[str, 'Reaction'] = None,
                  **kwargs):
 
         """
@@ -66,15 +72,22 @@ class CobraModelWrapper(MetabolicModelWrapper, model_type='metabolic_wrapper', r
                          **kwargs)
         
         self._met_model = None
+        self._simulator = None
         self._genes = {}
         self._metabolites = {}
         self._reactions = {}
 
         self._parsed = 0
 
+        # the setters will handle adding and removing variables to the correct containers
+        self.genes = genes
+        self.metabolites = metabolites
+        self.reactions = reactions
 
-    def set_simulator(self):
-        self.simulator = Simulation(self._met_model)
+
+    def set_simulator(self, met_model):
+        self._met_model = met_model
+        self.simulator = Simulation(met_model)
 
     # -----------------------------------------------------------------------------
     # Model type manager
@@ -86,9 +99,9 @@ class CobraModelWrapper(MetabolicModelWrapper, model_type='metabolic_wrapper', r
         Returns the types of the model
         :return: a set with the types of the model
         """
-        _types = {MetabolicModelWrapper.model_type}
+        _types = {MetabolicModel.model_type}
 
-        _types.update(super(MetabolicModelWrapper, self).types)
+        _types.update(super(MetabolicModel, self).types)
 
         return _types
 
@@ -101,6 +114,14 @@ class CobraModelWrapper(MetabolicModelWrapper, model_type='metabolic_wrapper', r
             is_parsed = False
         
         return is_parsed
+    
+    @property
+    def simulator(self):
+        if not self._simulator:
+            cobra_model = CobraModel("cobra model")
+            self._simulator = Simulation(cobra_model)
+
+        return self._simulator
         
     @property
     def met_model(self):
@@ -132,8 +153,63 @@ class CobraModelWrapper(MetabolicModelWrapper, model_type='metabolic_wrapper', r
     
     @property
     def contexts(self) -> List[HistoryManager]:
-        return super(MetabolicModelWrapper, self).contexts
+        return super(MetabolicModel, self).contexts
     
+
+     # -----------------------------------------------------------------------------
+    # Static attributes setters
+    # -----------------------------------------------------------------------------
+
+    @simulator.setter
+    def simulator(self, simulator: Simulation):
+        self._simulator = simulator
+        
+
+    @genes.setter
+    @recorder
+    def genes(self, value: Dict[str, 'Gene']):
+        """
+        It sets the genes of the model. The key is the gene identifier and the value is the `Gene` object.
+        :param value: a dictionary with the genes of the model
+        :return:
+        """
+        if not value:
+            value = {}
+
+        self.add(*value.values(), history=False)
+
+    @metabolites.setter
+    @recorder
+    def metabolites(self, value: Dict[str, 'Metabolite']):
+        """
+        It sets the metabolites of the model. The key is the metabolite identifier and the value is the `Metabolite`
+        object.
+        :param value: a dictionary with the metabolites of the model
+        :return:
+        """
+        if not value:
+            value = {}
+
+        self.add(*value.values(), history=False)
+
+    
+    @reactions.setter
+    @recorder
+    def reactions(self, value: Dict[str, 'Reaction']):
+        """
+        It sets the reactions of the model. The key is the reaction identifier and the value is the `Reaction` object.
+        :param value: a dictionary with the reactions of the model
+        :return:
+        """
+        if not value:
+            value = {}
+
+        self.add(*value.values(), history=False)
+
+
+
+
+
 
     def yield_genes(self) -> Generator['Gene', None, None]:
         """
@@ -180,10 +256,10 @@ class CobraModelWrapper(MetabolicModelWrapper, model_type='metabolic_wrapper', r
         rxn_dict = self.simulator.get_reaction(rxn_id)
 
         symbolic, warning = build_symbolic(expression=rxn_dict['gpr'])
-        genes = {gene.name: self.cobra_gene_to_mewpy_gene(gene.name) for gene in symbolic.atoms(symbols_only=True)}
+        genes = {gene.name: self.mewpy_gene_instance(gene.name) for gene in symbolic.atoms(symbols_only=True)}
         gpr = Expression(symbolic=symbolic, variables=genes)
 
-        stoichiometry = {self.cobra_met_to_mewpy_met(met_id): coeff for met_id, coeff in rxn_dict['stoichiometry'].items()}
+        stoichiometry = {self.mewpy_met_instance(met_id): coeff for met_id, coeff in rxn_dict['stoichiometry'].items()}
 
         args['types']=set(['reaction'])
         args['identifier']=rxn_id
@@ -198,7 +274,7 @@ class CobraModelWrapper(MetabolicModelWrapper, model_type='metabolic_wrapper', r
     def add_metabolite_data(self, args:dict, met_id):
         met_dict = self.simulator.get_metabolite(met_id)
 
-        reactions = {rxn: self.mewpy_rxn_instance(rxn) for rxn in self.simulator.get_metabolite_reactions(met_id)}
+        reactions = {rxn: self.cobra_rxn_to_mewpy_rxn(rxn) for rxn in self.simulator.get_metabolite_reactions(met_id)}
 
         args['types'] = set(['metabolite'])
         args['identifier'] = met_id
@@ -214,7 +290,7 @@ class CobraModelWrapper(MetabolicModelWrapper, model_type='metabolic_wrapper', r
     def add_gene_data(self, args, gene_id):
         gene_dict = self.simulator.get_gene(gene_id)
 
-        reactions = {rxn: self.mewpy_rxn_instance(rxn) for rxn in gene_dict['reactions']}
+        reactions = {rxn: self.cobra_rxn_to_mewpy_rxn(rxn) for rxn in gene_dict['reactions']}
 
         args['types'] = set(['gene'])
         args['identifier'] = gene_id
@@ -251,6 +327,20 @@ class CobraModelWrapper(MetabolicModelWrapper, model_type='metabolic_wrapper', r
         args = {'types': {'reaction'}, 'identifier': rxn_id, 'model': self}
         return Variable.from_types(**args)
 
+
+    def mewpy_met_instance(self, met_id):
+        args = {'types': {'metabolite'}, 'identifier': met_id, 'model': self}
+        met_data = self.simulator.get_metabolite(met_id)
+        args['compartment'] = met_data['compartment']
+        args['formula'] = met_data['formula']
+        return Variable.from_types(**args)
+    
+
+    def mewpy_gene_instance(self, gene_id):
+        args = {'types': {'gene'}, 'identifier': gene_id, 'model': self}
+        return Variable.from_types(**args)
+
+
     def cobra_objective_to_objective(self):
         res = {}
         for rxn_id, coeff in self.simulator.objective.items():
@@ -274,7 +364,7 @@ class CobraModelWrapper(MetabolicModelWrapper, model_type='metabolic_wrapper', r
                 return self._genes[identifier]
             
             else:
-                return super(MetabolicModelWrapper, self).get(identifier=identifier, default=default)
+                return super(MetabolicModel, self).get(identifier=identifier, default=default)
         
         else:
         
@@ -288,7 +378,7 @@ class CobraModelWrapper(MetabolicModelWrapper, model_type='metabolic_wrapper', r
                 return self.cobra_met_to_mewpy_met(identifier)
 
             else:
-                return super(MetabolicModelWrapper, self).get(identifier=identifier, default=default) 
+                return super(MetabolicModel, self).get(identifier=identifier, default=default) 
 
 
     def clean(self):
@@ -299,7 +389,7 @@ class CobraModelWrapper(MetabolicModelWrapper, model_type='metabolic_wrapper', r
 
 
     def clean_history(self):
-        super(MetabolicModelWrapper, self).clean_history()
+        super(MetabolicModel, self).clean_history()
         self.clean()
 
 
@@ -347,7 +437,7 @@ class CobraModelWrapper(MetabolicModelWrapper, model_type='metabolic_wrapper', r
                                                 ub=variable.upper_bound,
                                                 gpr=variable.gene_protein_reaction_rule)
 
-        return super(MetabolicModelWrapper, self).add(*variables, comprehensive=comprehensive, history=history)
+        return super(MetabolicModel, self).add(*variables, comprehensive=comprehensive, history=history)
     
 
     def remove(self,
@@ -365,15 +455,43 @@ class CobraModelWrapper(MetabolicModelWrapper, model_type='metabolic_wrapper', r
             if 'reaction' in variable.types:
                 self.simulator.remove_reaction(variable)
         
-        return super(MetabolicModelWrapper, self).remove(*variables, remove_orphans=remove_orphans, history=history)
+        return super(MetabolicModel, self).remove(*variables, remove_orphans=remove_orphans, history=history)
 
 
-    def wrapper_simulation(self,  method='fba') -> Solution:
+    def update(self,
+               compartments: Dict[str, str] = None,
+               objective: Dict['Reaction', Union[float, int]] = None,
+               variables: Union[List[Union['Gene', 'Metabolite', 'Reaction']],
+                                Tuple[Union['Gene', 'Metabolite', 'Reaction']],
+                                Set[Union['Gene', 'Metabolite', 'Reaction']]] = None,
+               **kwargs):
+        """
+        It updates the model with relevant information, namely the compartments, objective and variables.
+
+        :param compartments: the compartments to be updated
+        :param objective: the objective to be updated
+        :param variables: the variables to be updated
+        :param kwargs: additional arguments
+        :return:
+        """
+        if compartments is not None:
+            self.compartments = compartments
+
+        if variables is not None:
+            self.add(*variables)
+
+        if objective is not None:
+            self.objective = objective
+
+        super(MetabolicModel, self).update(**kwargs)
+
+
+    def wrapper_simulation(self,  method='fba', constraints=None) -> Solution:
         if method == 'fba':
-            res = self.simulator.simulate()
+            res = self.simulator.simulate(constraints=constraints)
 
         elif method == 'pfba':
-            res = self.simulator.simulate(method='pFBA')
+            res = self.simulator.simulate(method='pFBA', constraints=constraints)
 
         values = dict(res.fluxes)
         status = res.status
@@ -394,3 +512,14 @@ class CobraModelWrapper(MetabolicModelWrapper, model_type='metabolic_wrapper', r
         res = self.simulator.FVA(reactions=reactions, obj_frac=fraction, constraints=constraints, format='df')
         return res.rename(columns ={'Minimum': 'minimum', "Maximum":'maximum'})
         
+
+    def single_gene_deletion(self, genes: Union[List[str], None] = None):
+        return self.simulator.gene_deletion(genes=genes)
+    
+    def single_reaction_deletion(self, reactions: Union[List[str], None] = None):
+        return self.simulator.reaction_deletion(reactions=reactions)
+    
+
+    def has_external_method(self, method:str):
+        return method in ('FBA', 'pFBA', 'sgd', 'srd', 'FVA')
+    

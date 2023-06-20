@@ -5,7 +5,7 @@ from mewpy.germ.models.serialization import serialize, Serializer
 
 # Preventing circular dependencies that only happen due to type checking
 if TYPE_CHECKING:
-    from mewpy.germ.models import Model, MetabolicModel, RegulatoryModel, MetabolicModelWrapper
+    from mewpy.germ.models import Model, MetabolicModel, RegulatoryModel
     from mewpy.germ.algebra import Expression, Symbolic
 
     from .gene import Gene
@@ -393,7 +393,7 @@ class Variable(Serializer, metaclass=MetaVariable, factory=True):
                  identifier: Any,
                  name: str = None,
                  aliases: Set[str] = None,
-                 model: Union['Model', 'MetabolicModel', 'RegulatoryModel', 'MetabolicModelWrapper'] = None):
+                 model: Union['Model', 'MetabolicModel', 'RegulatoryModel'] = None):
 
         """
         Variable is the most base type of all variables in MEWpy,
@@ -536,7 +536,7 @@ class Variable(Serializer, metaclass=MetaVariable, factory=True):
         return self._aliases
 
     @property
-    def model(self) -> Union['Model', 'MetabolicModel', 'RegulatoryModel', 'MetabolicModelWrapper']:
+    def model(self) -> Union['Model', 'MetabolicModel', 'RegulatoryModel']:
         """
         It returns the model to which the variable belongs.
         Note that variables do not need to be directly associated with a model.
@@ -574,7 +574,7 @@ class Variable(Serializer, metaclass=MetaVariable, factory=True):
         self._aliases = value
 
     @model.setter
-    def model(self, value: Union['Model', 'MetabolicModel', 'RegulatoryModel', 'MetabolicModelWrapper']):
+    def model(self, value: Union['Model', 'MetabolicModel', 'RegulatoryModel']):
         """
         It sets the model to which the variable belongs.
         This setter does not perform any check or action in the model.
@@ -691,7 +691,7 @@ class Variable(Serializer, metaclass=MetaVariable, factory=True):
     def update(self,
                name: str = None,
                aliases: Set[str] = None,
-               model: Union['Model', 'MetabolicModel', 'RegulatoryModel', 'MetabolicModelWrapper'] = None):
+               model: Union['Model', 'MetabolicModel', 'RegulatoryModel'] = None):
         """
         It updates the attributes of the variable.
         :param name: the name of the variable
@@ -909,7 +909,7 @@ class Variable(Serializer, metaclass=MetaVariable, factory=True):
 # -----------------------------------------------------------------------------
 def variables_from_symbolic(symbolic: 'Symbolic',
                             types: Union[Set[str], List[str], Tuple[str]],
-                            model: Union['Model', 'MetabolicModel', 'RegulatoryModel', 'MetabolicModelWrapper'] = None) -> Dict[str, 'Variable']:
+                            model: Union['Model', 'MetabolicModel', 'RegulatoryModel'] = None) -> Dict[str, 'Variable']:
     """
     It returns the variables of the given type from the given symbolic expression.
     :param symbolic: the symbolic expression to parse and extract the variables from

@@ -3,12 +3,11 @@ from enum import Enum
 from .boolean_csv import BooleanRegulatoryCSV
 from . co_expression_csv import CoExpressionRegulatoryCSV
 from .target_regulator_csv import TargetRegulatorRegulatoryCSV
-from .cobra_model import CobraModel
 from .reframed_model import ReframedModel
 from .json import JSON
 from .metabolic_sbml import MetabolicSBML
 from .regulatory_sbml import RegulatorySBML
-from .cobraPy_object import CobraPyObject
+from .cobra_model_engine import CobraModelEngine
 
 
 class Engines(Enum):
@@ -22,10 +21,10 @@ class Engines(Enum):
     TargetRegulatorRegulatoryCSV = TargetRegulatorRegulatoryCSV
     RegulatorySBML = RegulatorySBML
     MetabolicSBML = MetabolicSBML
-    CobraModel = CobraModel
+    CobraModel = CobraModelEngine
     ReframedModel = ReframedModel
     JSON = JSON
-    CobraPyObject = CobraPyObject
+    CobraModelEngine = CobraModelEngine
 
     @classmethod
     def has_engine(cls, engine):

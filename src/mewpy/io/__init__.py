@@ -11,7 +11,7 @@ from .engines import (Engines,
                       BooleanRegulatoryCSV,
                       CoExpressionRegulatoryCSV,
                       TargetRegulatorRegulatoryCSV,
-                      CobraModel,
+                      CobraModelEngine,
                       ReframedModel,
                       JSON,
                       RegulatorySBML,
@@ -212,7 +212,7 @@ def read_cbmodel(io: Union['Cobra_Model', 'Reframed_Model'],
     readers = []
 
     if cobrapy:
-        boolean_reader = Reader(engine=CobraModel,
+        boolean_reader = Reader(engine=CobraModelEngine,
                                 io=io)
 
         readers.append(boolean_reader)

@@ -69,7 +69,7 @@ class RFBA(FBA):
         The regulatory layer is not considered in the linear problem. It is only considered in the simulation step.
         :return:
         """
-        if (self.model.is_metabolic() or self.model.is_metabolic_wrapper()):
+        if self.model.is_metabolic():
             self._build_mass_constraints()
 
             self._regulatory_reactions = [rxn.id
@@ -185,7 +185,7 @@ class RFBA(FBA):
         """
         # This method retrieves the constraints associated with a given metabolic/regulatory state
 
-        if not (self.model.is_metabolic() or self.model.is_metabolic_wrapper()):
+        if not self.model.is_metabolic():
             return {}
 
         constraints = {}

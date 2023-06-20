@@ -897,7 +897,7 @@ class SRFBA(FBA):
 
         :return:
         """
-        if (self.model.is_metabolic() or self.model.is_metabolic_wrapper()) and self.model.is_regulatory():
+        if self.model.is_metabolic() and self.model.is_regulatory():
             self._build_mass_constraints()
             self._build_gprs()
             self._build_interactions()

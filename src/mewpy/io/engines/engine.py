@@ -4,7 +4,7 @@ from collections import defaultdict
 from typing import Union, TYPE_CHECKING, Dict, Optional
 
 if TYPE_CHECKING:
-    from ...germ.models import RegulatoryModel, MetabolicModel, Model, MetabolicModelWrapper
+    from ...germ.models import RegulatoryModel, MetabolicModel, Model
     from mewpy.io.dto import DataTransferObject
     from io import TextIOWrapper
     from cobra import Model as CobraModel
@@ -16,7 +16,7 @@ class Engine(metaclass=ABCMeta):
     def __init__(self,
                  io: Union[str, 'TextIOWrapper', 'CobraModel', 'ReframedModel'],
                  config: dict,
-                 model: Union['Model', 'MetabolicModel', 'RegulatoryModel', 'MetabolicModelWrapper'] = None):
+                 model: Union['Model', 'MetabolicModel', 'RegulatoryModel'] = None):
         """
         The engine interface for reading/writing models. The abstract properties and methods should be fully
         implemented in the concrete engines.
@@ -83,7 +83,7 @@ class Engine(metaclass=ABCMeta):
         return self._config
 
     @property
-    def model(self) -> Union['Model', 'MetabolicModel', 'RegulatoryModel', 'MetabolicModelWrapper']:
+    def model(self) -> Union['Model', 'MetabolicModel', 'RegulatoryModel']:
         return self._model
 
     @property
@@ -124,8 +124,8 @@ class Engine(metaclass=ABCMeta):
 
     @abstractmethod
     def read(self,
-             model: Union['Model', 'MetabolicModel', 'RegulatoryModel', 'MetabolicModelWrapper'] = None,
-             variables: dict = None) -> Union['Model', 'MetabolicModel', 'RegulatoryModel', 'MetabolicModelWrapper']:
+             model: Union['Model', 'MetabolicModel', 'RegulatoryModel'] = None,
+             variables: dict = None) -> Union['Model', 'MetabolicModel', 'RegulatoryModel']:
         """
         Reads a model into a GERM model. If a model is provided, the read method will increment further variables
         If a variables dictionary is provided, multi-type variables can be built together with the ones available in

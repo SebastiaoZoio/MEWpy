@@ -1,17 +1,20 @@
 from functools import partial
 from typing import Union, TYPE_CHECKING
 
-from mewpy.io.dto import VariableRecord, DataTransferObject, CompartmentRecord, FunctionTerm
-from mewpy.germ.algebra import Expression
-from mewpy.germ.models import MetabolicModel
 from .engine import Engine
+
+from mewpy.io.dto import VariableRecord, DataTransferObject, CompartmentRecord, FunctionTerm
 from .engines_utils import build_symbolic, expression_warning, cobra_warning
 
+
+from mewpy.germ.algebra import Expression
+from ...germ.models.cobra_wrapper import CobraModelWrapper
+
 if TYPE_CHECKING:
-    from mewpy.germ.models import RegulatoryModel, Model, MetabolicModel
+    from ...germ.models import RegulatoryModel, Model, MetabolicModel
 
 
-class CobraModel(Engine):
+class CobraModelEngine(Engine):
     def __init__(self, io, config, model=None):
         """
         Engine for COBRApy constraint-based metabolic models
@@ -22,40 +25,16 @@ class CobraModel(Engine):
     def model_type(self):
         return 'metabolic'
 
+
     @property
     def model(self):
 
         if self._model is None:
             identifier = self.get_identifier()
 
-            return MetabolicModel(identifier=identifier)
+            return CobraModelWrapper(identifier=identifier)
 
         return self._model
-
-    @staticmethod
-    def parse_cobra_objective(objective, model):
-
-        res = {}
-
-        if hasattr(objective, 'expression'):
-
-            for arg in objective.expression.args:
-
-                coef, reaction = str(arg).split('*')
-
-                reaction = model.get(reaction, None)
-
-                if reaction is not None:
-                    res[reaction] = coef
-
-        return res
-
-    def get_identifier(self):
-
-        if self.dto.cobra_model:
-            return self.dto.cobra_model.id
-
-        return 'model'
 
     def open(self, mode='r'):
 
@@ -192,11 +171,12 @@ class CobraModel(Engine):
                 self.variables[gene.id].add('gene')
 
                 self.dto.genes[gene.id] = gene_record
-
+    
+    
     def read(self,
-             model: Union['Model', 'MetabolicModel', 'RegulatoryModel'] = None,
-             variables=None):
-
+            model: Union['Model', 'MetabolicModel', 'RegulatoryModel'] = None,
+            variables = None):
+        
         if not model:
             model: Union['Model', 'MetabolicModel', 'RegulatoryModel'] = self.model
 
@@ -209,13 +189,21 @@ class CobraModel(Engine):
         if self.dto.name:
             model.name = self.dto.name
 
-        model.compartments = {compartment.id: compartment.name
-                              for compartment in self.dto.compartments.values()}
+        model.set_simulator(self.dto.cobra_model)
 
         processed_metabolites = set()
         processed_genes = set()
 
-        for rxn_id, rxn_record in self.dto.reactions.items():
+        germ_reactions = set([item[0] for item in variables.items() if len(item[1]) > 1 and 'reaction' in item[1]])
+        germ_metabolites = set([item[0] for item in variables.items() if len(item[1]) > 1 and 'metabolite' in item[1]])
+        germ_genes = set([item[0] for item in variables.items() if len(item[1]) > 1 and 'gene' in item[1]])
+
+        add_germ_mets_rxns(germ_metabolites, germ_reactions, self.dto.cobra_model)
+        add_germ_genes_rxns(germ_genes, germ_reactions, self.dto.cobra_model)
+
+
+        for rxn_id in germ_reactions:
+            rxn_record = self.dto.reactions[rxn_id]
 
             genes = {}
 
@@ -269,7 +257,8 @@ class CobraModel(Engine):
 
         to_append = []
 
-        for met_id, met_record in self.dto.metabolites.items():
+        for met_id in germ_metabolites:
+            met_record = self.dto.metabolites[met_id]
 
             if met_id not in processed_metabolites:
                 met, warning = met_record.to_variable(model=model,
@@ -285,7 +274,8 @@ class CobraModel(Engine):
 
                 to_append.append(met)
 
-        for gene_id, gene_record in self.dto.genes.items():
+        for gene_id in germ_genes:
+            gene_record = self.dto.genes[gene_id]
 
             if gene_id not in processed_genes:
                 gene, warning = gene_record.to_variable(model=model,
@@ -300,16 +290,37 @@ class CobraModel(Engine):
 
         model.add(*to_append)
 
-        model.objective = self.parse_cobra_objective(objective=self.dto.cobra_model.objective, model=model)
-
         return model
+
 
     def write(self):
         pass
 
     def close(self):
-
         pass
 
     def clean(self):
         self._dto = None
+
+    def get_identifier(self):
+
+        if self.dto.cobra_model:
+            return self.dto.cobra_model.id
+
+        return 'model'
+
+
+
+
+def add_germ_mets_rxns(germ_metabolites, germ_reactions, cobra_model):
+    for met in germ_metabolites:
+        cobra_met = cobra_model.metabolites.get_by_id(met)
+        for rxn in cobra_met.reactions:
+            germ_reactions.add(rxn.id)
+
+
+def add_germ_genes_rxns(germ_genes, germ_reactions, cobra_model):
+    for gene in germ_genes:
+        cobra_gene = cobra_model.genes.get_by_id(gene)
+        for rxn in cobra_gene.reactions:
+            germ_reactions.add(rxn.id)
