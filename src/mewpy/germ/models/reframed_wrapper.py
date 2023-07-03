@@ -1,25 +1,27 @@
+
 from .metabolic import MetabolicModel
-from mewpy.simulation.cobra import Simulation
+
+from mewpy.simulation.reframed import Simulation
 from mewpy.germ.variables.variable import Variable
 from mewpy.io.engines.engines_utils import build_symbolic
 
+from reframed import CBModel as ReframedModel
 
-from cobra.core.model import Model as CobraModel
+REFRAMED_METHODS = ('FBA', 'pFBA', 'FVA')
 
-COBRA_METHODS = ('FBA', 'pFBA', 'sgd', 'srd', 'FVA')
+class ReframedModelWrapper(MetabolicModel, model_type='reframed_wrapper', register=True, constructor=True, checker=True):
 
-
-class CobraModelWrapper(MetabolicModel, model_type='cobra_wrapper', register=True, constructor=True, checker=True):
-   
     def __init__(self,
                  identifier,
                  **kwargs):
+
 
         self._initialized = 0
 
         super().__init__(identifier,
                          **kwargs)
         
+    
 
     @property
     def initialized(self):
@@ -30,14 +32,17 @@ class CobraModelWrapper(MetabolicModel, model_type='cobra_wrapper', register=Tru
         
         return is_initialized
     
+
     @property
     def simulator(self):
         if not self._simulator:
-            cobra_model = CobraModel("cobra model")
-            self._simulator = Simulation(cobra_model)
+            reframed_model = ReframedModel("reframed model")
+            self._simulator = Simulation(reframed_model)
 
         return self._simulator
-        
+    
+
+
     @simulator.setter
     def simulator(self, simulator):
         self._simulator = simulator
@@ -59,7 +64,7 @@ class CobraModelWrapper(MetabolicModel, model_type='cobra_wrapper', register=Tru
 
 
     def has_external_method(self, method:str):
-        return method in COBRA_METHODS
+        return method in REFRAMED_METHODS
     
 
     def build_variable(self, args):

@@ -1,19 +1,21 @@
 from functools import partial
 from typing import Union, TYPE_CHECKING
 
-from mewpy.io.dto import VariableRecord, DataTransferObject, FunctionTerm
-from mewpy.germ.algebra import Expression, NoneAtom
-from mewpy.germ.models import MetabolicModel
 from .engine import Engine
+
+from mewpy.io.dto import VariableRecord, DataTransferObject, FunctionTerm
 from .engines_utils import build_symbolic, expression_warning, cobra_warning
 
 
+from mewpy.germ.algebra import Expression, NoneAtom
+from ...germ.models.reframed_wrapper import ReframedModelWrapper
+from reframed.core.transformation import rename
+
 if TYPE_CHECKING:
-    from mewpy.germ.models import RegulatoryModel, Model, MetabolicModel
+    from ...germ.models import RegulatoryModel, Model, MetabolicModel
 
 
-class ReframedModel(Engine):
-
+class ReframedModelEngine(Engine):
     def __init__(self, io, config, model=None):
         """
         Engine for Reframed constraint-based metabolic models
@@ -22,15 +24,15 @@ class ReframedModel(Engine):
 
     @property
     def model_type(self):
-        return 'metabolic'
-
+        return 'reframed_wrapper'
+    
     @property
     def model(self):
 
         if self._model is None:
             identifier = self.get_identifier()
 
-            return MetabolicModel(identifier=identifier)
+            return ReframedModelWrapper(identifier=identifier)
 
         return self._model
 
@@ -47,11 +49,17 @@ class ReframedModel(Engine):
 
         if not hasattr(self.io, 'reactions'):
             raise OSError(f'{self.io} is not a valid input. Provide a reframed model')
+        
+        a_gene = next(iter(self.io.genes.keys()))
+        if a_gene[:2] == 'G_':
+            remove_prefix = lambda id: id[2:]
+            rename(self.io, fmt_mets=remove_prefix, fmt_genes=remove_prefix, fmt_rxns=remove_prefix)
 
         self.dto.reframed_model = self.io
 
         self.dto.id = self.get_identifier()
 
+    
     def parse(self):
 
         if self.dto is None:
@@ -175,10 +183,12 @@ class ReframedModel(Engine):
 
         self.dto.objective = self.dto.reframed_model.get_objective()
 
-    def read(self,
-             model: Union['Model', 'MetabolicModel', 'RegulatoryModel'] = None,
-             variables=None):
 
+
+    def read(self,
+            model: Union['Model', 'MetabolicModel', 'RegulatoryModel'] = None,
+            variables = None):
+        
         if not model:
             model: Union['Model', 'MetabolicModel', 'RegulatoryModel'] = self.model
 
@@ -190,6 +200,8 @@ class ReframedModel(Engine):
 
         if self.dto.name:
             model.name = self.dto.name
+
+        model.set_simulator(self.dto.reframed_model)
 
         processed_metabolites = set()
         processed_genes = set()
@@ -283,11 +295,11 @@ class ReframedModel(Engine):
 
         return model
 
+
     def write(self):
         pass
 
     def close(self):
-
         pass
 
     def clean(self):

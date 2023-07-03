@@ -32,6 +32,9 @@ def slim_fba(model: Union['Model', 'MetabolicModel', 'RegulatoryModel'],
     :param constraints: additional constraints to be used for the simulation.
     :return: the objective value for the simulation
     """
+    if model.has_external_method("FBA"):
+        return model.wrapper_simulation("fba", slim=True)
+
     fba = FBA(model).build()
 
     objective_value, _ = run_method_and_decode(method=fba, objective=objective, constraints=constraints)
@@ -61,6 +64,9 @@ def slim_pfba(model: Union['Model', 'MetabolicModel', 'RegulatoryModel'],
     :param constraints: additional constraints to be used for the simulation.
     :return: the objective value for the simulation
     """
+    if model.has_external_method("pFBA"):
+        return model.wrapper_simulation("pfba", slim=True)
+    
     pfba = pFBA(model).build()
 
     objective_value, _ = run_method_and_decode(method=pfba, objective=objective, constraints=constraints)
@@ -89,7 +95,6 @@ def fva(model: Union['Model', 'MetabolicModel', 'RegulatoryModel'],
     if model.has_external_method('FVA'):
         return model.wrapper_fva(fraction=fraction,
                                  reactions=reactions,
-                                 objective=objective,
                                  constraints=constraints
                                  )
 

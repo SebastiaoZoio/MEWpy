@@ -23,7 +23,7 @@ class CobraModelEngine(Engine):
 
     @property
     def model_type(self):
-        return 'metabolic'
+        return 'cobra_wrapper'
 
 
     @property
@@ -194,12 +194,7 @@ class CobraModelEngine(Engine):
         processed_metabolites = set()
         processed_genes = set()
 
-        germ_reactions = set([item[0] for item in variables.items() if len(item[1]) > 1 and 'reaction' in item[1]])
-        germ_metabolites = set([item[0] for item in variables.items() if len(item[1]) > 1 and 'metabolite' in item[1]])
-        germ_genes = set([item[0] for item in variables.items() if len(item[1]) > 1 and 'gene' in item[1]])
-
-        add_germ_mets_rxns(germ_metabolites, germ_reactions, self.dto.cobra_model)
-        add_germ_genes_rxns(germ_genes, germ_reactions, self.dto.cobra_model)
+        germ_reactions, germ_metabolites, germ_genes = get_germ_vars(variables, model, self.dto.cobra_model)
 
 
         for rxn_id in germ_reactions:
@@ -253,10 +248,6 @@ class CobraModelEngine(Engine):
             if warning:
                 self.warnings.append(partial(cobra_warning, warning))
 
-            model.add(rxn)
-
-        to_append = []
-
         for met_id in germ_metabolites:
             met_record = self.dto.metabolites[met_id]
 
@@ -272,7 +263,6 @@ class CobraModelEngine(Engine):
                 if warning:
                     self.warnings.append(partial(cobra_warning, warning))
 
-                to_append.append(met)
 
         for gene_id in germ_genes:
             gene_record = self.dto.genes[gene_id]
@@ -285,10 +275,6 @@ class CobraModelEngine(Engine):
 
                 if warning:
                     self.warnings.append(partial(cobra_warning, warning))
-
-                to_append.append(gene)
-
-        model.add(*to_append)
 
         return model
 
@@ -311,8 +297,24 @@ class CobraModelEngine(Engine):
 
 
 
+def get_germ_vars(variables, model, cobra_model):
+    germ_sets = {key: set() for key in ['reaction', 'metabolite', 'gene']}
+
+    for var_id, types in variables.items():
+        if any(t in germ_sets for t in types) and len(types)>1:
+            for t in types:
+                if t in germ_sets:
+                    germ_sets[t].add(var_id)
+            model.add_reg_var(var_id, types)
+    
+    add_germ_mets_rxns(germ_sets['metabolite'], germ_sets['reaction'], cobra_model)
+    add_germ_genes_rxns(germ_sets['gene'], germ_sets['reaction'], cobra_model)
+
+    return germ_sets['reaction'], germ_sets['metabolite'], germ_sets['gene']
+
 
 def add_germ_mets_rxns(germ_metabolites, germ_reactions, cobra_model):
+    """Add reactions in which the regulatory metabolite is envolved"""
     for met in germ_metabolites:
         cobra_met = cobra_model.metabolites.get_by_id(met)
         for rxn in cobra_met.reactions:
@@ -320,6 +322,7 @@ def add_germ_mets_rxns(germ_metabolites, germ_reactions, cobra_model):
 
 
 def add_germ_genes_rxns(germ_genes, germ_reactions, cobra_model):
+    """Add reactions in which the regulatory gene is envolved"""
     for gene in germ_genes:
         cobra_gene = cobra_model.genes.get_by_id(gene)
         for rxn in cobra_gene.reactions:

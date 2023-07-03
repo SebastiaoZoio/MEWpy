@@ -304,7 +304,7 @@ class Model(Serializer, metaclass=MetaModel, factory=True):
 
         registry = cls.get_registry()
 
-        types = tuple([registry[name] for name in args])
+        types = tuple([registry['mewpy_metabolic'] if name=='metabolic' else registry[name] for name in args])
 
         if len(types) == 1:
             return types[0]

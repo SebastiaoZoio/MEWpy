@@ -122,6 +122,13 @@ class CBModelContainer(ModelContainer):
 
     def get_exchange_reactions(self):
         return self.model.get_exchange_reactions()
+    
+    def get_sink_reactions(self):
+        return self.model.get_reactions_by_type(ReactionType.SINK)
+    
+    def get_demand_reactions(self):
+        #TODO
+        return []
 
     def get_gene_reactions(self):
         """

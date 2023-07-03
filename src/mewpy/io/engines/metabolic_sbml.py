@@ -4,7 +4,7 @@ from typing import Union, TYPE_CHECKING
 
 from mewpy.io.dto import DataTransferObject, VariableRecord, History, FunctionTerm, CompartmentRecord
 from mewpy.germ.algebra import Expression, Symbol, Or, And, NoneAtom
-from mewpy.germ.models import RegulatoryModel, MetabolicModel
+from mewpy.germ.models.mewpy_metabolic import MewpyMetabolicModel
 from mewpy.util.constants import ModelConstants
 from .engine import Engine
 from .engines_utils import (build_symbolic,
@@ -35,7 +35,7 @@ class MetabolicSBML(Engine):
 
     @property
     def model_type(self):
-        return 'metabolic'
+        return 'mewpy_metabolic'
 
     @property
     def model(self):
@@ -47,7 +47,7 @@ class MetabolicSBML(Engine):
             if not identifier:
                 identifier = self.get_identifier()
 
-            return MetabolicModel(identifier=identifier)
+            return MewpyMetabolicModel(identifier=identifier)
 
         return self._model
 

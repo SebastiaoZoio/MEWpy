@@ -12,7 +12,7 @@ from .engines import (Engines,
                       CoExpressionRegulatoryCSV,
                       TargetRegulatorRegulatoryCSV,
                       CobraModelEngine,
-                      ReframedModel,
+                      ReframedModelEngine,
                       JSON,
                       RegulatorySBML,
                       MetabolicSBML)
@@ -218,7 +218,7 @@ def read_cbmodel(io: Union['Cobra_Model', 'Reframed_Model'],
         readers.append(boolean_reader)
 
     if reframed:
-        regulatory_reader = Reader(engine=ReframedModel,
+        regulatory_reader = Reader(engine=ReframedModelEngine,
                                    io=io)
 
         readers.append(regulatory_reader)

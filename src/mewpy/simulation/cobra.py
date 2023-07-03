@@ -182,6 +182,24 @@ class CobraModelContainer(ModelContainer):
         """
         rxns = [r.id for r in self.model.exchanges]
         return rxns
+    
+    def get_demand_reactions(self) -> List[str]:
+        """Get the list of demand reactions
+
+        :return: The list of demand reactions
+        :rtype: List[str]
+        """
+        rxns = [r.id for r in self.model.demands]
+        return rxns
+    
+    def get_sink_reactions(self) -> List[str]:
+        """Get the list of sink reactions
+
+        :return: The list of sink reactions
+        :rtype: List[str]
+        """
+        rxns = [r.id for r in self.model.sinks]
+        return rxns
 
     def get_gene_reactions(self) -> Dict[str,List[str]]:
         """Get a map of genes to reactions.
