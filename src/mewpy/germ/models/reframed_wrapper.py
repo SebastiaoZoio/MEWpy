@@ -15,24 +15,11 @@ class ReframedModelWrapper(MetabolicModel, model_type='reframed_wrapper', regist
                  identifier,
                  **kwargs):
 
-
-        self._initialized = 0
-
         super().__init__(identifier,
                          **kwargs)
         
     
-
-    @property
-    def initialized(self):
-        try:
-            is_initialized = self._initialized
-        except:
-            is_initialized = False
-        
-        return is_initialized
     
-
     @property
     def simulator(self):
         if not self._simulator:
@@ -55,13 +42,10 @@ class ReframedModelWrapper(MetabolicModel, model_type='reframed_wrapper', regist
         self._metabolites = {}
         self._genes = {}
         self._reactions = {}
-        self._initialized = 1
-
 
     def clean_history(self):
         super(MetabolicModel, self).clean_history()
-        self.clean()
-
+        self.destroy_init_vars()
 
     def has_external_method(self, method:str):
         return method in REFRAMED_METHODS

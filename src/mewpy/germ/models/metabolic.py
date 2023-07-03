@@ -69,6 +69,12 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
         self._reactions = {}
         self._simulator = None
 
+        # auxiliar variables to build integrated models
+        self.initializing = 0
+        self.init_rxns = {}
+        self.init_mets = {}
+        self.init_genes = {}
+
         super().__init__(identifier,
                          **kwargs)
         
@@ -291,6 +297,9 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
 
     def get(self, identifier: Any, default=None) -> Union['Gene', 'Metabolite', 'Reaction']:
 
+        if self.initializing:
+            return self.get_init_var(identifier)
+
         if identifier in self.simulator.reactions:
             return self.external_rxn_to_mewpy_rxn(identifier)
                     
@@ -308,43 +317,30 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
         self.regulatory_vars[id] = types
 
 
-    def add_gene(self, variable):
-        if variable.id not in self.simulator.genes:
-            self.simulator.add_gene(variable.id, variable.name)
-
-
-    def add_metabolite(self, variable):
-        if variable.id not in self.simulator.metabolites:
-            self.simulator.add_metabolite(variable.id,
-                                            formula=variable.formula,
-                                            name=variable.name,
-                                            compartment=variable.compartment)
-            
-    def add_reaction(self, variable):
-        if variable.id not in self.simulator.reactions:
-            self.simulator.add_reaction(rxn_id=variable.id,
-                                            name=variable.name,
-                                            stoichiometry={r.id: v for r , v in variable.stoichiometry.items()},
-                                            lb=variable.lower_bound,
-                                            ub=variable.upper_bound,
-                                            gpr=variable.gene_protein_reaction_rule)
-
-
     def add(self,
             *variables: Union['Gene', 'Metabolite', 'Reaction'],
             comprehensive: bool = True,
             history: bool = True):
         
         for variable in variables:
-            if not self.initialized:
-                return super(MetabolicModel, self).add(*variables, comprehensive=comprehensive, history=history)
-
             if 'gene' in variable.types:
-                self.add_gene(variable)
+                if variable.id not in self.simulator.genes:
+                    self.simulator.add_gene(variable.id, variable.name)
             if 'metabolite' in variable.types:
-                self.add_metabolite(variable)
+                if variable.id not in self.simulator.metabolites:
+                    self.simulator.add_metabolite(variable.id,
+                                            formula=variable.formula,
+                                            name=variable.name,
+                                            compartment=variable.compartment)
             if 'reaction' in variable.types:
-                self.add_reaction(variable)
+                if variable.id not in self.simulator.reactions:
+                    self.simulator.add_reaction(rxn_id=variable.id,
+                                            name=variable.name,
+                                            stoichiometry={r.id: v for r , v in variable.stoichiometry.items()},
+                                            lb=variable.lower_bound,
+                                            ub=variable.upper_bound,
+                                            gpr=variable.gene_protein_reaction_rule)
+
 
         return super(MetabolicModel, self).add(*variables, comprehensive=comprehensive, history=history)
     
@@ -392,6 +388,43 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
     def clean(self):
         pass
 
+
+
+    def get_init_var(self, identifier: Any) -> Union['Gene', 'Metabolite', 'Reaction']:
+        
+        if identifier in self.init_mets:
+            return self.init_mets[identifier]
+
+        elif identifier in self.init_rxns:
+            return self.init_rxns[identifier]
+
+        elif identifier in self.init_genes:
+            return self.init_genes[identifier]
+
+
+    def add_init_vars(self, *variables: Union['Gene', 'Metabolite', 'Reaction']):
+        self.initializing = 1
+        for variable in variables:
+                if 'gene' in variable.types:
+                    self.init_genes[variable.id] = variable
+
+                if 'metabolite' in variable.types:
+                    self.init_mets[variable.id] = variable
+
+                if 'reaction' in variable.types:
+                    for metabolite in variable.yield_metabolites():
+                        self.init_mets[metabolite.id] = metabolite
+
+                    for gene in variable.yield_genes():
+                        self.init_genes[gene.id] = gene
+
+                    self.init_rxns[variable.id] = variable
+
+    def destroy_init_vars(self):
+        self.init_genes = {}
+        self.init_mets = {}
+        self.init_rxns = {}
+        self.initializing = 0
 
     # -----------------------------------------------------------------------------
     # Variable Converters

@@ -248,6 +248,10 @@ class CobraModelEngine(Engine):
             if warning:
                 self.warnings.append(partial(cobra_warning, warning))
 
+            model.add_init_vars(rxn)
+
+        to_append = []
+
         for met_id in germ_metabolites:
             met_record = self.dto.metabolites[met_id]
 
@@ -263,6 +267,7 @@ class CobraModelEngine(Engine):
                 if warning:
                     self.warnings.append(partial(cobra_warning, warning))
 
+                to_append.append(met)
 
         for gene_id in germ_genes:
             gene_record = self.dto.genes[gene_id]
@@ -275,6 +280,10 @@ class CobraModelEngine(Engine):
 
                 if warning:
                     self.warnings.append(partial(cobra_warning, warning))
+
+                to_append.append(gene)
+
+        model.add_init_vars(*to_append)
 
         return model
 

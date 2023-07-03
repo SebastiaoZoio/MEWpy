@@ -50,6 +50,7 @@ class ReframedModelEngine(Engine):
         if not hasattr(self.io, 'reactions'):
             raise OSError(f'{self.io} is not a valid input. Provide a reframed model')
         
+        # remove model prefixes (G_, R_ and M_)
         a_gene = next(iter(self.io.genes.keys()))
         if a_gene[:2] == 'G_':
             remove_prefix = lambda id: id[2:]
@@ -256,7 +257,7 @@ class ReframedModelEngine(Engine):
             if warning:
                 self.warnings.append(partial(cobra_warning, warning))
 
-            model.add(rxn)
+            model.add_init_vars(rxn)
 
         to_append = []
 
@@ -289,7 +290,7 @@ class ReframedModelEngine(Engine):
 
                 to_append.append(gene)
 
-        model.add(*to_append)
+        model.add_init_vars(*to_append)
 
         model.objective = self.dto.objective
 
