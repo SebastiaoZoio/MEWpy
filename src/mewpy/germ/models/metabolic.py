@@ -3,8 +3,9 @@ from .model import Model
 from mewpy.germ.models.serialization import serialize
 from mewpy.util.utilities import generator
 from mewpy.util.history import HistoryManager, recorder
-from mewpy.solvers.solution import Solution
+from mewpy.solvers.solution import Solution, Status, SStatus
 from mewpy.germ.algebra import Expression
+from mewpy.simulation.simulator import get_simulator
 
 if TYPE_CHECKING:
     
@@ -32,11 +33,7 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
     """
     def __init__(self,
                  identifier: Any,
-                 compartments: Dict[str, str] = None,
-                 genes: Dict[str, 'Gene'] = None,
-                 metabolites: Dict[str, 'Metabolite'] = None,
-                 objective: Dict['Reaction', Union[float, int]] = None,
-                 reactions: Dict[str, 'Reaction'] = None,
+                 model=None,
                  **kwargs):
 
         """
@@ -67,7 +64,7 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
         self._metabolites = {}
         self._objective = {}
         self._reactions = {}
-        self._simulator = None
+        self.simulator = None
 
         # auxiliar variables to build integrated models
         self.initializing = 0
@@ -78,15 +75,8 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
         super().__init__(identifier,
                          **kwargs)
         
-        # the setters will handle adding and removing variables to the correct containers
-        self.compartments = compartments
-        self.genes = genes
-        self.metabolites = metabolites
-        self.reactions = reactions
-        if objective:
-            self.objective = objective
-
-        self.regulatory_vars = {}
+        self.set_simulator(model)
+        self.external_methods = ()
 
 
     @classmethod
@@ -124,28 +114,33 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
     # -----------------------------------------------------------------------------
     # Static attributes
     # -----------------------------------------------------------------------------
-    @property
-    def simulator(self):
-        return self._simulator
 
     @property
-    def metabolites(self):
+    def metabolites(self) -> List[str]:
+        if not self.simulator:
+            return {}
         if not self._metabolites:
-            self._metabolites = {ext_met: self.external_met_to_mewpy_met(ext_met) for ext_met in self.simulator.metabolites}
+            self._metabolites = dict((m, self.external_met_to_mewpy_met(m)) for m in self.simulator.metabolites)
         return self._metabolites
-    
+        
     @property
-    def genes(self):
+    def genes(self) -> List[str]:
+        if not self.simulator:
+            return {}
+
         if not self._genes:
-            self._genes = {ext_gene: self.external_gene_to_mewpy_gene(ext_gene) for ext_gene in self.simulator.genes}
+            self._genes = dict((g, self.external_gene_to_mewpy_gene(g)) for g in self.simulator.genes)
         return self._genes
 
     @property
-    def reactions(self):
-        if not self._reactions:
-            self._reactions = {ext_rxn: self.external_rxn_to_mewpy_rxn(ext_rxn) for ext_rxn in self.simulator.reactions}
-        return self._reactions
+    def reactions(self) -> List[str]:
+        if not self.simulator:
+            return {}
 
+        if not self._reactions:
+            self._reactions = dict((r, self.external_rxn_to_mewpy_rxn(r)) for r in self.simulator.reactions)
+        return self._reactions
+    
 
     @property
     def objective(self):
@@ -154,15 +149,15 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
 
     @property
     def exchanges(self):
-        return {ext_rxn: self.external_rxn_to_mewpy_rxn(ext_rxn) for ext_rxn in self.simulator.get_exchange_reactions()}
+        return dict((ext_rxn, self.external_rxn_to_mewpy_rxn(ext_rxn)) for ext_rxn in self.simulator.get_exchange_reactions())
     
     @property
     def demands(self):
-        return {ext_rxn: self.external_rxn_to_mewpy_rxn(ext_rxn) for ext_rxn in self.simulator.get_demand_reactions()}
+        return dict((ext_rxn, self.external_rxn_to_mewpy_rxn(ext_rxn)) for ext_rxn in self.simulator.get_demand_reactions())
 
     @property
     def sinks(self):
-        return {ext_rxn: self.external_rxn_to_mewpy_rxn(ext_rxn) for ext_rxn in self.simulator.get_sink_reactions()}
+        return dict((ext_rxn, self.external_rxn_to_mewpy_rxn(ext_rxn)) for ext_rxn in self.simulator.get_sink_reactions())
     
 
     @property
@@ -194,6 +189,11 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
     # -----------------------------------------------------------------------------
     # Static attributes setters
     # -----------------------------------------------------------------------------
+    def set_simulator(self, model):
+        if model:
+            self.simulator = get_simulator(model)
+
+
     @compartments.setter
     @recorder
     def compartments(self, value: Dict[str, str]):
@@ -261,11 +261,14 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
     # Generators
     # -----------------------------------------------------------------------------
 
-    def yield_genes(self) -> Generator['Gene', None, None]:
+    def yield_genes(self):
         """
         It yields the genes of the model.
         :return: a generator with the genes of the model
         """
+        #for g in self.genes:
+        #    yield self.external_gene_to_mewpy_gene(g)
+
         return generator(self.genes)
 
     def yield_gprs(self) -> Generator['Expression', None, None]:
@@ -280,6 +283,9 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
         It yields the metabolites of the model.
         :return: a generator with the metabolites of the model
         """
+        #for m in self.metabolites:
+        #    yield self.external_met_to_mewpy_met(m)
+
         return generator(self.metabolites)
 
     def yield_reactions(self) -> Generator['Reaction', None, None]:
@@ -287,6 +293,9 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
         It yields the reactions of the model.
         :return: a generator with the reactions of the model
         """
+        #for r in self.reactions:
+        #    yield self.external_rxn_to_mewpy_rxn(r)
+
         return generator(self.reactions)
     
 
@@ -313,15 +322,14 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
             return super(MetabolicModel, self).get(identifier=identifier, default=default) 
         
 
-    def add_reg_var(self, id, types):
-        self.regulatory_vars[id] = types
-
 
     def add(self,
             *variables: Union['Gene', 'Metabolite', 'Reaction'],
             comprehensive: bool = True,
             history: bool = True):
         
+        self.clean()
+
         for variable in variables:
             if 'gene' in variable.types:
                 if variable.id not in self.simulator.genes:
@@ -350,6 +358,8 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
                remove_orphans: bool = False,
                history: bool = True):
         
+        self.clean()
+
         for variable in variables:
             if 'reaction' in variable.types:
                 self.simulator.remove_reaction(variable.id)
@@ -374,6 +384,9 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
         :param kwargs: additional arguments
         :return:
         """
+
+        self.clean()
+
         if compartments is not None:
             self.compartments = compartments
 
@@ -386,12 +399,18 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
         super(MetabolicModel, self).update(**kwargs)
     
     def clean(self):
-        pass
+        self._metabolites = {}
+        self._genes = {}
+        self._reactions = {}
+
+
+    def clean_history(self):
+        super(MetabolicModel, self).clean_history()
+        self.destroy_init_vars()
 
 
 
     def get_init_var(self, identifier: Any) -> Union['Gene', 'Metabolite', 'Reaction']:
-        
         if identifier in self.init_mets:
             return self.init_mets[identifier]
 
@@ -402,23 +421,16 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
             return self.init_genes[identifier]
 
 
-    def add_init_vars(self, *variables: Union['Gene', 'Metabolite', 'Reaction']):
-        self.initializing = 1
-        for variable in variables:
-                if 'gene' in variable.types:
-                    self.init_genes[variable.id] = variable
+    def add_init_var(self, variable: Union['Gene', 'Metabolite', 'Reaction']):
+        if 'gene' in variable.types:
+            self.init_genes[variable.id] = variable
 
-                if 'metabolite' in variable.types:
-                    self.init_mets[variable.id] = variable
+        if 'metabolite' in variable.types:
+            self.init_mets[variable.id] = variable
 
-                if 'reaction' in variable.types:
-                    for metabolite in variable.yield_metabolites():
-                        self.init_mets[metabolite.id] = metabolite
+        if 'reaction' in variable.types:
+            self.init_rxns[variable.id] = variable
 
-                    for gene in variable.yield_genes():
-                        self.init_genes[gene.id] = gene
-
-                    self.init_rxns[variable.id] = variable
 
     def destroy_init_vars(self):
         self.init_genes = {}
@@ -510,7 +522,7 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
         args['model'] = self
         args['formula'] = met_dict['formula']
         args['compartment'] = met_dict['compartment']
-        #args['charge'] = met_dict['charge']
+        args['charge'] = met_dict['charge']
         args['reactions'] = reactions
 
 
@@ -529,11 +541,6 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
 
     def add_reg_data(self, args, id):
         if self.is_regulatory():
-            if id in self.regulatory_vars:
-                types = self.regulatory_vars.get(id)
-                for type in types:
-                    args['types'].add(type)
-
             if id in self.regulators:
                 args['types'].add('regulator')
                 args['interactions'] = self.regulators[id].interactions
@@ -558,8 +565,10 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
         if slim:
             return res.objective_value
 
-        values = dict(res.fluxes)
-        status = res.status
+        values=None
+        if res.fluxes:
+            values = dict(res.fluxes)
+        status = status_mapping[res.status]
         fobj=res.objective_value
         message = status.value
 
@@ -581,5 +590,15 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
         return self.simulator.reaction_deletion(reactions=reactions)
 
     def has_external_method(self, method:str):
-        return False
+        return method in self.external_methods
     
+
+
+status_mapping = {
+    SStatus.OPTIMAL: Status.OPTIMAL,
+    SStatus.UNKNOWN: Status.UNKNOWN,
+    SStatus.SUBOPTIMAL: Status.SUBOPTIMAL,
+    SStatus.UNBOUNDED: Status.UNBOUNDED,
+    SStatus.INFEASIBLE: Status.INFEASIBLE,
+    SStatus.INF_OR_UNB: Status.INF_OR_UNB
+}

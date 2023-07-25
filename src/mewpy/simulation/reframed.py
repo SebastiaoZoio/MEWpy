@@ -108,7 +108,8 @@ class CBModelContainer(ModelContainer):
         res = {'id': m_id, 
                'name': met.name, 
                'compartment': met.compartment, 
-               'formula': met.metadata.get('FORMULA', '')}
+               'formula': met.metadata.get('FORMULA', ''),
+               'charge': int(met.metadata.get('CHARGE', ''))}
         return AttrDict(res)
 
     @property

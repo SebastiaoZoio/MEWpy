@@ -123,7 +123,7 @@ class CobraModelContainer(ModelContainer):
         :rtype: Dict[str,Any]
         """
         met = self.model.metabolites.get_by_id(m_id)
-        res = {'id': m_id, 'name': met.name, 'compartment': met.compartment, 'formula': met.formula}
+        res = {'id': m_id, 'name': met.name, 'compartment': met.compartment, 'formula': met.formula, 'charge':met.charge}
         return AttrDict(res)
 
     @property
@@ -748,10 +748,26 @@ class Simulation(CobraModelContainer, Simulator):
         return Simulation(Model(model_id))
 
     def gene_deletion(self, genes: Union[List[str],None] = None):
-        return single_gene_deletion(model=self.model, gene_list=genes)
+        df = single_gene_deletion(model=self.model, gene_list=genes)
+
+        result = df.copy()
+        result['ids'] = result['ids'].apply(lambda x: next(iter(x)))
+        result['growth'] = result['growth'].fillna(0.0)
+        result = result.set_index('ids')
+        result.index.name = None
+        result['status'] = result['status'].str.title()
+        return result
     
     def reaction_deletion(self, reactions: Union[List[str],None] = None):
-        return single_reaction_deletion(model=self.model, reaction_list=reactions)
+        df = single_reaction_deletion(model=self.model, reaction_list=reactions)
+
+        result = df.copy()
+        result['ids'] = result['ids'].apply(lambda x: next(iter(x)))
+        result['growth'] = result['growth'].fillna(0.0)
+        result = result.set_index('ids')
+        result.index.name = None
+        result['status'] = result['status'].str.title()
+        return result
 
 class GeckoSimulation(Simulation):
     """

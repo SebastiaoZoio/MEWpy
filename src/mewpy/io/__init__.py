@@ -26,6 +26,16 @@ if TYPE_CHECKING:
     from reframed import CBModel as Reframed_Model
 
 
+WRAPPER_ENGINES = (CobraModelEngine, ReframedModelEngine)
+
+
+def sort_readers(*readers: Reader):
+    """
+    Inserts the wrapper engine readers into the beginning of the tuple.
+    """
+    return tuple(sorted(readers, key=lambda r: isinstance(r.engine, WRAPPER_ENGINES), reverse=True))
+
+
 def load_sbml_container(filename, flavor='reframed'):
     if flavor == 'reframed':
         from reframed.io.sbml import load_cbmodel
@@ -83,6 +93,7 @@ def read_model(*readers: Reader,
     :param warnings: Whether to launch warnings found during reading
     :return: mewpy metabolic, regulatory or both model
     """
+    readers = sort_readers(*readers)    
 
     reader_director = Director(*readers)
 

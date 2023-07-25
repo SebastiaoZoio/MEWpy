@@ -941,5 +941,5 @@ class SRFBA(FBA):
         solver_kwargs['constraints'] = constraints
 
         solution = self.solver.solve(**solver_kwargs)
-        self.model.clean()
+
         return solution

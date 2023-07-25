@@ -86,7 +86,15 @@ class FBA(LinearProblem):
         :return: A Solution instance.
         """
         if self.model.has_external_method('FBA'):
-           constraints = solver_kwargs.get('constraints')
-           return self.model.wrapper_simulation(method='fba', constraints=constraints)
+            constraints = {}
+            kwargs_constraints = kwargs.get('constraints')
+            solver_constraints = solver_kwargs.get('constraints')
+            if kwargs_constraints:
+                constraints.update(kwargs_constraints)
+            if solver_constraints:
+                constraints.update(solver_constraints)
+
+
+            return self.model.wrapper_simulation(method='fba', constraints=constraints)
 
         return self.solver.solve(**solver_kwargs)

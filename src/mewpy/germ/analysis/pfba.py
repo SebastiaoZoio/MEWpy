@@ -134,8 +134,14 @@ class pFBA(FBA):
         """
 
         if self.model.has_external_method('pFBA'):
-           constraints = solver_kwargs.get('constraints')
-           return self.model.wrapper_simulation(method='pfba', constraints=constraints)
+            constraints = {}
+            kwargs_constraints = kwargs.get('constraints')
+            solver_constraints = solver_kwargs.get('constraints')
+            if kwargs_constraints:
+                constraints.update(kwargs_constraints)
+            if solver_constraints:
+                constraints.update(solver_constraints)
+            return self.model.wrapper_simulation(method='pfba', constraints=constraints)
 
         if not solver_kwargs:
             solver_kwargs = {}

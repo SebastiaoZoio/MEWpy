@@ -33,7 +33,7 @@ def slim_fba(model: Union['Model', 'MetabolicModel', 'RegulatoryModel'],
     :return: the objective value for the simulation
     """
     if model.has_external_method("FBA"):
-        return model.wrapper_simulation("fba", slim=True)
+        return model.wrapper_simulation("fba", slim=True, constraints=constraints)
 
     fba = FBA(model).build()
 
@@ -65,7 +65,7 @@ def slim_pfba(model: Union['Model', 'MetabolicModel', 'RegulatoryModel'],
     :return: the objective value for the simulation
     """
     if model.has_external_method("pFBA"):
-        return model.wrapper_simulation("pfba", slim=True)
+        return model.wrapper_simulation("pfba", slim=True, constraints=constraints)
     
     pfba = pFBA(model).build()
 
