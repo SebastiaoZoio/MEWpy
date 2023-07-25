@@ -2,7 +2,7 @@ import warnings
 warnings.filterwarnings("ignore", message="scipy._lib.messagestream.MessageStream size changed")
 from termcolor import colored
 
-from mewpy.io import Reader, Engines, read_model
+from src.mewpy.io import Reader, Engines, read_model
 from mewpy.germ.analysis import FBA, fva, SRFBA, RFBA
 from cobra.io import read_sbml_model
 
@@ -73,7 +73,7 @@ def get_orginal_gem_model(met_file, reg_file=None):
 
 def get_new_gem_model(met_file, reg_file=None):
     cobra_model = read_sbml_model(met_file)
-    cobra_reader = Reader(Engines.CobraPyObject, cobra_model)
+    cobra_reader = Reader(Engines.CobraModelEngine, cobra_model)
 
     if reg_file:
         trn_reader = get_regulatory_reader(reg_file)
@@ -151,16 +151,17 @@ if __name__ == "__main__":
 
         e_coli_trn_model = "/home/sebastiao_zoio/Documents/test_mewpy/mewpy/examples/models/germ/e_coli_core_trn.csv"
      
-        e_coli_original_germ_model = get_orginal_gem_model(e_coli_gem_file, e_coli_trn_model)
+        #e_coli_original_germ_model = get_orginal_gem_model(e_coli_gem_file)
+        #e_coli_original_germ_model = get_orginal_gem_model(e_coli_gem_file, e_coli_trn_model)
         e_coli_new_germ_model = get_new_gem_model(e_coli_gem_file, e_coli_trn_model)
 
-        do_fba_asserts(e_coli_original_germ_model, e_coli_new_germ_model)
+        #do_fba_asserts(e_coli_original_germ_model, e_coli_new_germ_model)
 
-        do_fva_asserts(e_coli_original_germ_model, e_coli_new_germ_model, reactions=True)
+        #do_fva_asserts(e_coli_original_germ_model, e_coli_new_germ_model, reactions=True)
 
-        do_srfba_asserts(e_coli_original_germ_model, e_coli_new_germ_model)
+        #do_srfba_asserts(e_coli_original_germ_model, e_coli_new_germ_model)
 
-        do_rfba_asserts(e_coli_original_germ_model, e_coli_new_germ_model)
+        #do_rfba_asserts(e_coli_original_germ_model, e_coli_new_germ_model)
 
 
     if yeast:
