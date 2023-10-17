@@ -266,10 +266,17 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
         It yields the genes of the model.
         :return: a generator with the genes of the model
         """
-        #for g in self.genes:
-        #    yield self.external_gene_to_mewpy_gene(g)
+        genes = {}
+        if self._genes == {} and self.simulator:
+            for g in self.simulator.genes:
+                gene = self.external_gene_to_mewpy_gene(g)
+                genes.update({g: gene})
+                yield gene
+            self._genes = genes
 
-        return generator(self.genes)
+        else:
+            for g in self.genes.values():
+                yield g
 
     def yield_gprs(self) -> Generator['Expression', None, None]:
         """
@@ -283,20 +290,35 @@ class MetabolicModel(Model, model_type='metabolic', register=True, constructor=T
         It yields the metabolites of the model.
         :return: a generator with the metabolites of the model
         """
-        #for m in self.metabolites:
-        #    yield self.external_met_to_mewpy_met(m)
+        mets = {}
+        if self._metabolites == {} and self.simulator:
+            for m in self.simulator.metabolites:
+                met = self.external_met_to_mewpy_met(m)
+                mets.update({m: met})
+                yield met
+            self._metabolites = mets
 
-        return generator(self.metabolites)
+        else:
+            for m in self.metabolites.values():
+                yield m
+
 
     def yield_reactions(self) -> Generator['Reaction', None, None]:
         """
         It yields the reactions of the model.
         :return: a generator with the reactions of the model
         """
-        #for r in self.reactions:
-        #    yield self.external_rxn_to_mewpy_rxn(r)
+        rxns = {}
+        if self._reactions == {} and self.simulator:
+            for r in self.simulator.reactions:
+                rxn = self.external_rxn_to_mewpy_rxn(r)
+                rxns.update({r: rxn})
+                yield rxn
+            self._reactions = rxns
 
-        return generator(self.reactions)
+        else:
+            for r in self.reactions.values():
+                yield r
     
 
 
